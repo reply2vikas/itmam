@@ -27,7 +27,7 @@ Week 1 of 5 — the case engine, the pathway format and the rule tests.
 
 ## Try it
 
-Open the live demo at **https://itmam-85431195414.europe-west3.run.app** (synthetic data; AI assistance by Gemini 2.5 Flash-Lite, with a rules-only fallback), or run it yourself with `make run` and open http://localhost:8080. Each
+Open the live demo at **https://itmam-85431195414.europe-west3.run.app** (synthetic data; AI assistance by Gemini 2.5 Flash-Lite, with a rules-only fallback), or run it on your own computer with `make run` and open `localhost:8080` in your browser (this address works only on the computer running it). Each
 visitor gets a private sandbox with four synthetic patients and a demo clock:
 
 | Patient | What the demo shows |
@@ -76,7 +76,7 @@ make deploy         # Cloud Run, one instance
 make demo           # a narrated run: one patient reaches closure, one goes silent and escalates
 make proptest       # 600 random care journeys, with statistics on how deep they go
 make check          # validate the pathway files
-make run            # API on http://localhost:8080 (/healthz, /api/pathways)
+make run            # the demo on your computer, at localhost:8080
 ```
 
 ## How it works
