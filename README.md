@@ -42,27 +42,34 @@ engine refuses each one and the refusal changes nothing.
 
 ## Agents
 
-Four agents read a case and **propose**; none of them can change it. A person applies a proposal,
+Six agents read a case and **propose**; none of them can change it. A person applies a proposal,
 and the case engine still checks all ten rules.
 
 | Agent | Job | Guardrails |
 | --- | --- | --- |
+| Orchestrator | Runs the right agents for the case, in order; reports an evidence score and what is missing | Decides nothing clinical; logs every proposal |
 | Chaser | What should happen next on a late or stuck case, and who does it | Urgent cases always go to a clinician first |
 | Router | Which endoscopy unit to refer to | Insurance network, accepting referrals, no unit that already rejected, female-endoscopist preference, urgent slot within 7 days |
-| Navigator | Drafts the patient message; tags barriers in free-text replies (English and Arabic) | Approved templates; Gemini drafts must pass length and no-diagnosis-words checks; barrier tags are only suggestions until a coordinator approves |
+| Navigator | Drafts the patient message; tags barriers in free-text replies (English and Arabic) | Approved templates; no names sent to the model; drafts checked for length and diagnosis words; tags are suggestions until a coordinator approves |
 | Verifier | Checks a closure before anyone signs | Placeholder evidence, due-date range, closure type that contradicts the outcome |
+| Guard | AI security for everything sent to or from a model | Prompt-injection screen (English and Arabic); Emirates ID, phone and email redaction |
 
-`make bench` runs 44 benchmark cases built on real engine states, including 12 safety-critical
-ones; results are in [docs/agent-benchmark.md](docs/agent-benchmark.md). With `GEMINI_API_KEY`
-set (and optionally `GEMINI_MODEL`), the Navigator uses Gemini and falls back to its rules on any
-failure or guardrail breach; `python -m itmam.agents.bench --live` benchmarks that mode.
+**AI security and governance:** see [docs/ai-governance.md](docs/ai-governance.md). In the demo,
+the **AI governance** button shows the controls and the session's AI log. `ITMAM_AI=off` is a
+kill switch that runs every agent on rules only.
+
+**Testing:** 90 automated tests, a 67-case agent benchmark (24 safety-critical cases;
+[docs/agent-benchmark.md](docs/agent-benchmark.md)), 10,000 seeded random care journeys with no
+rule broken, and 14 of 14 planted bugs caught. With `GEMINI_API_KEY` set (and optionally
+`GEMINI_MODEL`), the Navigator uses Gemini and falls back to its rules on any failure or
+guardrail breach; `python -m itmam.agents.bench --live` benchmarks that mode.
 
 ## Quick start
 
 ```bash
 make install        # Python 3.11+
 make test           # every test, with a quick random-journey run
-make bench          # the 44-case agent benchmark
+make bench          # the 67-case agent benchmark
 make deploy         # Cloud Run, one instance
 make demo           # a narrated run: one patient reaches closure, one goes silent and escalates
 make proptest       # 600 random care journeys, with statistics on how deep they go
@@ -144,3 +151,13 @@ docs/       engine guide, assumptions and limitations
 ## Licence
 
 Apache-2.0 — see [LICENSE](LICENSE). Copyright 2026 Vikas Kumar Sharma.
+
+## Mobile
+
+Itmam installs on a phone like an app, with no store download:
+
+- **Android (Chrome):** open the demo link, tap the menu (⋮), then **Install app** or **Add to Home screen**.
+- **iPhone (Safari):** open the demo link, tap **Share**, then **Add to Home Screen**.
+
+It opens full-screen with its own icon. Native Google Play and App Store apps are planned for the
+pilot phase, after Department of Health review; store links will be added here when published.

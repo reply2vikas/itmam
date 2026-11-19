@@ -92,6 +92,7 @@ class Sandbox:
     clock: ManualClock
     profiles: dict[str, Profile] = field(default_factory=dict)
     log: list[str] = field(default_factory=list)
+    ai_log: list[dict[str, Any]] = field(default_factory=list)  # every agent proposal
 
     # ------------------------------------------------------------------ helpers
 

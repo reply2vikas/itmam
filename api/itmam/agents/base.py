@@ -25,11 +25,22 @@ class Proposal:
         return asdict(self)
 
 
+def ai_enabled() -> bool:
+    """The kill switch: ITMAM_AI=off sends every agent to its rules, with no model calls."""
+    return os.environ.get("ITMAM_AI", "on").lower() not in {"off", "0", "false"}
+
+
+def model_name() -> str | None:
+    if not os.environ.get("GEMINI_API_KEY") or not ai_enabled():
+        return None
+    return os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+
 def gemini(prompt: str, timeout: float = 8.0) -> str | None:
     """Ask Gemini for text. Returns None when no key is set or the call fails, so every agent
     falls back to its rules. The model is configurable: GEMINI_MODEL."""
     key = os.environ.get("GEMINI_API_KEY")
-    if not key:
+    if not key or not ai_enabled():
         return None
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"

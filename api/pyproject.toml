@@ -26,7 +26,7 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-itmam = ["web/*.html"]
+itmam = ["web/*.html", "web/*.js", "web/*.svg", "web/*.webmanifest"]
 
 [tool.setuptools.packages.find]
 include = ["itmam*"]

@@ -18,7 +18,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from itmam import __version__
-from itmam.agents import chase, draft_message, route, tag_barriers, verify_closure
+from itmam.agents import tag_barriers
+from itmam.agents.base import ai_enabled, model_name
+from itmam.agents.orchestrator import run_agents
 from itmam.domain import Actor, CommandRejected, Stage
 from itmam.domain.calendar import UAE_TZ
 from itmam.domain.model import Case, ExpectationStatus
@@ -242,15 +244,7 @@ def next_step(sid: str, cid: str, body: Next) -> dict[str, Any]:
 def agents(sid: str, cid: str) -> dict[str, Any]:
     box = sandbox(sid)
     with _lock:
-        c = box.case(cid)
-        out = [chase(box, cid).to_dict(), draft_message(box, cid).to_dict()]
-        if c.is_open and c.stage in (Stage.ISSUED, Stage.NOTIFIED, Stage.ACKNOWLEDGED):
-            out.append(route(box, cid).to_dict())
-        if c.is_open and c.stage == Stage.OUTCOME_RECORDED:
-            due = (box.clock.now() + timedelta(days=3 * 365)).date().isoformat()
-            evidence = {"outcome_record": "DOC-COLONOSCOPY-REPORT", "next_due_date": due}
-            out.append(verify_closure(box, cid, "surveillance", evidence).to_dict())
-        return {"proposals": out}
+        return run_agents(box, cid)
 
 
 class Reply(BaseModel):
@@ -260,8 +254,24 @@ class Reply(BaseModel):
 @app.post("/api/demo/{sid}/cases/{cid}/reply")
 def patient_reply(sid: str, cid: str, body: Reply) -> dict[str, Any]:
     def run(box: Sandbox) -> str:
-        proposal = tag_barriers(box, cid, body.text[:500])
+        proposal = tag_barriers(box, cid, body.text)
         codes = proposal.details["codes"]
+        box.ai_log.append(
+            {
+                "at": box.clock.now().isoformat(),
+                "case_id": cid,
+                "agent": "navigator+guard",
+                "source": proposal.source,
+                "summary": proposal.summary,
+                "guard": proposal.details["guard"],
+                "applied": False,
+            }
+        )
+        if proposal.details["injection"]:
+            return (
+                "The Guard flagged this reply as a possible prompt injection: it was kept away "
+                "from the AI and nothing changed. A coordinator should read it."
+            )
         if not codes:
             return "The Navigator found no barrier in that reply."
         box.engine.suggest_barriers(Actor.ai(), cid, codes, f"navigator/{proposal.source}")
@@ -318,6 +328,48 @@ def mistake(sid: str, cid: str, kind: str) -> dict[str, Any]:
     if result["ok"] is False:
         result["message"] = f"{MISTAKES[kind]}: {result['message']}"
     return result
+
+
+@app.get("/api/demo/{sid}/governance")
+def governance(sid: str) -> dict[str, Any]:
+    """What the AI did in this sandbox, and the controls around it."""
+    box = sandbox(sid)
+    with _lock:
+        suggestions = list(box.engine.suggestions.values())
+        return {
+            "ai_enabled": ai_enabled(),
+            "model": model_name() or "none (rules only)",
+            "controls": [
+                "Agents propose; only people act, through the case engine's ten rules",
+                "AI actor refused for every command except suggestions",
+                "Guard screens patient text for prompt injection and personal data",
+                "No patient names or identifiers are sent to the model",
+                "Kill switch: ITMAM_AI=off runs every agent on rules only",
+                "Every proposal and review is logged; the audit log is hash-chained",
+            ],
+            "proposals_logged": len(box.ai_log),
+            "suggestions": {
+                "pending": sum(s.status == "pending" for s in suggestions),
+                "accepted": sum(s.status == "accepted" for s in suggestions),
+                "rejected": sum(s.status == "rejected" for s in suggestions),
+            },
+            "log": box.ai_log[-50:][::-1],
+        }
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def manifest() -> FileResponse:
+    return FileResponse(WEB / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker() -> FileResponse:
+    return FileResponse(WEB / "sw.js", media_type="text/javascript")
+
+
+@app.get("/icon.svg", include_in_schema=False)
+def icon() -> FileResponse:
+    return FileResponse(WEB / "icon.svg", media_type="image/svg+xml")
 
 
 @app.get("/api/directory")

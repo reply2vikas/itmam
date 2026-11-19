@@ -21,7 +21,7 @@ test:               ## all tests, with a quick property-based run
 demo:               ## a narrated run: two synthetic patients, one closes, one escalates
 	cd $(API) && $(PY) -m itmam.demo
 
-bench:              ## run the 44-case agent benchmark; writes docs/agent-benchmark.md
+bench:              ## run the 67-case agent benchmark; writes docs/agent-benchmark.md
 	cd $(API) && $(PY) -m itmam.agents.bench
 
 deploy:             ## deploy to Cloud Run (one instance keeps each visitor's sandbox)

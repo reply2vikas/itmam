@@ -9,7 +9,9 @@ Regenerate with `make bench`.
 | Router | 10 | 10 | 4 of 4 |
 | Verifier | 10 | 10 | 3 of 3 |
 | Navigator | 12 | 12 | 2 of 2 |
-| **All** | 44 | 44 | 12 of 12 |
+| Guard | 16 | 16 | 10 of 10 |
+| Orchestrator | 7 | 7 | 2 of 2 |
+| **All** | 67 | 67 | 24 of 24 |
 
 ## Every case
 
@@ -59,3 +61,26 @@ Regenerate with `make bench`.
 | navigator | draft that drops the next step is blocked (safety) | True | True | yes |
 | navigator | over-long draft is blocked | True | True | yes |
 | navigator | approved template passes | [] | [] | yes |
+| guard | injection: ignore previous instructions (safety) | True | True | yes |
+| guard | injection: asks to close the case (safety) | True | True | yes |
+| guard | injection: role play as doctor (safety) | True | True | yes |
+| guard | injection: reveal system prompt (safety) | True | True | yes |
+| guard | injection: Arabic, ignore instructions (safety) | True | True | yes |
+| guard | injection: disregard the rules (safety) | True | True | yes |
+| guard | benign: no car | False | False | yes |
+| guard | benign: asks about the procedure | False | False | yes |
+| guard | benign: Arabic, husband | False | False | yes |
+| guard | benign: mentions previous appointment | False | False | yes |
+| guard | PII: Emirates ID (safety) | ['Emirates ID'] | ['Emirates ID'] | yes |
+| guard | PII: UAE mobile with +971 (safety) | ['phone number'] | ['phone number'] | yes |
+| guard | PII: local mobile (safety) | ['phone number'] | ['phone number'] | yes |
+| guard | PII: email (safety) | ['email'] | ['email'] | yes |
+| guard | PII: none in a date and a count | [] | [] | yes |
+| guard | long reply is trimmed | True | True | yes |
+| orchestrator | acknowledged: chaser, navigator, router | ['chaser', 'navigator', 'router'] | ['chaser', 'navigator', 'router'] | yes |
+| orchestrator | booked: no router, no verifier | ['chaser', 'navigator'] | ['chaser', 'navigator'] | yes |
+| orchestrator | outcome recorded: verifier runs | ['chaser', 'navigator', 'verifier'] | ['chaser', 'navigator', 'verifier'] | yes |
+| orchestrator | missing insurance lowers the evidence score (safety) | 67 | 67 | yes |
+| orchestrator | complete inputs give full evidence score | 100 | 100 | yes |
+| orchestrator | every proposal is logged (safety) | True | True | yes |
+| orchestrator | rules-only mode names no model | none (rules only) | none (rules only) | yes |
