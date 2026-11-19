@@ -1,5 +1,4 @@
-# Simulation (week 4)
+# Simulation (planned for the pilot)
 
-Discrete-event simulation (SimPy) of 10,000 positive colorectal screening results, calibrated
-to published follow-up rates. Every parameter will live in `parameters.yaml` with its source or
-the word "assumed".
+Not built yet. Plan: a discrete-event simulation of 10,000 positive colorectal screening results,
+calibrated to published follow-up rates, with every parameter's source or the word "assumed".

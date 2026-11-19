@@ -2,33 +2,41 @@
 
 **Every actionable screening result, owned until care is complete.**
 
+[![ci](https://github.com/reply2vikas/itmam/actions/workflows/ci.yml/badge.svg)](https://github.com/reply2vikas/itmam/actions/workflows/ci.yml)
+**Live demo:** https://itmam-85431195414.europe-west3.run.app
+
 Itmam is a prototype for the Future Health Digital Innovation Challenge, Statement 05: *Closing
 the Screening-to-Care Loop*. Every actionable screening result becomes a case with exactly one
 accountable owner and a clock on the next expected event. When something that should happen
 does not — a message unopened, a referral not accepted, an appointment missed — Itmam notices
 the silence and escalates to qualified staff. Ownership moves to another organisation only when
-that organisation accepts the referral, and a case closes only with evidence or two authorised
-signatures.
+that organisation accepts the referral, and a case closes only with the evidence and sign-offs
+its closure type requires: for example, the receiving clinician signs a recorded outcome, and
+closing a case as "not actionable" needs two different clinicians.
 
 > **All data in this repository is synthetic.** No real person's data is used anywhere.
 > Synthetic identifiers start with `TEST-`; organisations are fictional.
 
 ## Status
 
-Week 1 of 5 — the case engine, the pathway format and the rule tests.
+Working prototype, submitted on 20 November 2026.
 
-| Week | Scope |
+| Area | State |
 | --- | --- |
-| 1 | Case engine, pathway configuration, invariants, property-based tests ✅ |
-| 2 | API, persistence, synthetic cohort, coordinator and clinician screens |
-| 3 | Patient journey page (Arabic and English), AI barrier tagging and hand-over drafts |
-| 4 | Simulation, AI evaluation, load, accessibility and security checks |
-| 5 | Documentation, deck, demo video |
+| Case engine, three pathways, ten invariants, property-based and planted-bug tests | Done |
+| Web demo with per-visitor sandbox, four synthetic patients, demo clock, closure and impact measures | Done, live |
+| Six propose-only agents, Guard, AI governance screen, 67-case benchmark | Done, live |
+| Installable web app (phone home screen) | Done |
+| Discrete-event simulation of 10,000 results; held-out evaluation of live AI replies | Planned for the pilot |
+| Persistent database, sign-in, real system integrations | Planned for the pilot |
 
 ## Try it
 
 Open the live demo at **https://itmam-85431195414.europe-west3.run.app** (synthetic data; AI assistance by Gemini 2.5 Flash-Lite, with a rules-only fallback), or run it on your own computer with `make run` and open `localhost:8080` in your browser (this address works only on the computer running it). Each
-visitor gets a private sandbox with four synthetic patients and a demo clock:
+visitor gets a private sandbox with four synthetic patients and a demo clock, and the page opens
+with a two-minute tour:
+
+![Itmam demo: case list, case timeline and closure measures](docs/demo.png)
 
 | Patient | What the demo shows |
 | --- | --- |
@@ -80,6 +88,17 @@ make run            # the demo on your computer, at localhost:8080
 ```
 
 ## How it works
+
+```mermaid
+flowchart LR
+    R[Screening result] --> E[Case engine<br/>owner, clocks, ten rules]
+    E -->|silence| X[Escalation<br/>L1 coordinator, L2 clinician, L3 manager]
+    E -->|read-only case| A[Six agents<br/>propose only]
+    A <-->|redacted, screened text| G[Guard] <--> M[Gemini, optional]
+    A -->|suggestion| P[Coordinator or clinician]
+    P -->|approved command| E
+    E --> L[(Hash-chained audit log)]
+```
 
 - **Pathways are configuration.** Each file in [`api/pathways/`](api/pathways) sets the clocks,
   owners, closure rules, pause rules and barrier codes for one pathway. The three prototype
@@ -137,17 +156,17 @@ make mutation-check  # plants 14 deliberate bugs and confirms the tests catch ev
 
 In the 10,000-journey run, 45% of journeys closed at least one case, 27% reached a recorded
 outcome, 20% escalated a case to L3 and 19% paused and resumed one; every closure type occurred.
-The 100,000-journey evidence quoted in the submission is run on the final code, as ten seeded
-batches of 10,000.
+The submission quotes the 10,000-journey run. A 100,000-journey run (ten seeded batches of
+10,000) can be reproduced with `make proptest-100k` or the "evidence" workflow.
 
 ## Repository layout
 
 ```text
 api/        engine (itmam/domain), pathway files, JSON Schema, tests, FastAPI app
-web/        React app (week 2)
-sim/        discrete-event simulation (week 4)
-eval/       AI evaluation sets and runner (week 4)
-docs/       engine guide, assumptions and limitations
+api/itmam/web/   the demo web app (served by the API)
+api/itmam/agents/  the six agents and their benchmark
+docs/       engine guide, AI governance, agent benchmark, assumptions and limitations
+web/ sim/ eval/  notes on work planned for the pilot (no code yet)
 ```
 
 ## Licence
