@@ -37,6 +37,8 @@ visitor gets a private sandbox with four synthetic patients and a demo clock:
 | Sara (Arabic, urgent, prefers a female endoscopist) | Urgency first; routing that respects her preference |
 | Rashid (English, Thiqa) | A missed appointment, barriers, and rebooking with support |
 
+A **closure and impact measures** panel, computed live from the demo's cases, shows the measures Statement 05 asks for: notified, understood, referrals accepted, no-shows, overdue, escalated, closed with evidence, unresolved, and average days from result to notification, referral acceptance and closure.
+
 "Try a mistake" makes the AI, the wrong unit or the wrong person attempt an unsafe action; the
 engine refuses each one and the refusal changes nothing.
 
@@ -58,7 +60,7 @@ and the case engine still checks all ten rules.
 the **AI governance** button shows the controls and the session's AI log. `ITMAM_AI=off` is a
 kill switch that runs every agent on rules only.
 
-**Testing:** 90 automated tests, a 67-case agent benchmark (24 safety-critical cases;
+**Testing:** 91 automated tests, a 67-case agent benchmark (24 safety-critical cases;
 [docs/agent-benchmark.md](docs/agent-benchmark.md)), 10,000 seeded random care journeys with no
 rule broken, and 14 of 14 planted bugs caught. With `GEMINI_API_KEY` set (and optionally
 `GEMINI_MODEL`), the Navigator uses Gemini and falls back to its rules on any failure or

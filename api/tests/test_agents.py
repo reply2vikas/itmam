@@ -65,3 +65,10 @@ def test_app_install_files_are_served() -> None:
     assert client.get("/manifest.webmanifest").status_code == 200
     assert client.get("/sw.js").status_code == 200
     assert client.get("/icon.svg").status_code == 200
+
+
+def test_closure_measures_are_reported() -> None:
+    client = TestClient(app)
+    metrics = client.post("/api/demo").json()["metrics"]
+    assert metrics["actionable_results"] == 4
+    assert metrics["notified"] == 4 and metrics["unresolved"] == 4

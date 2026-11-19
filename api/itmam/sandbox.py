@@ -190,6 +190,54 @@ class Sandbox:
             "violations": [str(v) for v in check_all(self.engine)],
             "audit_events": len(self.engine.audit),
             "audit_chain_ok": not self.engine.audit.verify(),
+            "metrics": self.metrics(),
+        }
+
+    def metrics(self) -> dict[str, Any]:
+        """Statement 05's closure and impact measures, computed from this sandbox's cases and
+        audit log. Prototype figures on synthetic patients, not outcomes."""
+        from itmam.domain.model import ExpectationStatus
+
+        now = self.clock.now()
+        cases = list(self.engine.cases.values())
+        firsts: dict[tuple[str, str], datetime] = {}
+        for event in self.engine.audit.events:
+            if event.case_id:
+                key = (event.case_id, event.action)
+                firsts.setdefault(key, datetime.fromisoformat(event.at))
+
+        def avg_days(start: str, end: str) -> float | None:
+            gaps = [
+                (firsts[(c.id, end)] - firsts[(c.id, start)]).total_seconds() / 86400
+                for c in cases
+                if (c.id, start) in firsts and (c.id, end) in firsts
+            ]
+            return round(sum(gaps) / len(gaps), 1) if gaps else None
+
+        def overdue(c: Case) -> bool:
+            return c.is_open and any(
+                e.status == ExpectationStatus.ARMED and e.breach_at <= now for e in c.expectations
+            )
+
+        return {
+            "actionable_results": len(cases),
+            "notified": sum(any(s.notified_at for s in c.subjects) for c in cases),
+            "understood": sum(all(s.understood for s in c.subjects) for c in cases),
+            "referrals_accepted": sum(
+                any(r.status == "accepted" for r in c.referrals) for c in cases
+            ),
+            "attended": sum(
+                c.stage.value in {"attended", "outcome_recorded"} or bool(c.closure and c.outcome)
+                for c in cases
+            ),
+            "no_shows": sum(c.no_shows for c in cases),
+            "overdue_now": sum(overdue(c) for c in cases),
+            "escalated": sum(bool(c.escalations) for c in cases),
+            "closed_with_evidence": sum(c.closure is not None for c in cases),
+            "unresolved": sum(c.is_open for c in cases),
+            "avg_days_to_notification": avg_days("case_opened", "message_delivered"),
+            "avg_days_to_referral_accepted": avg_days("case_opened", "referral_accepted"),
+            "avg_days_to_closure": avg_days("case_opened", "case_closed"),
         }
 
 

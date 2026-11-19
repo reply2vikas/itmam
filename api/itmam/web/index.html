@@ -73,6 +73,10 @@ h2 { font-size: 18px; margin: 0 0 4px; } h4 { margin: 14px 0 6px; font-size: 14p
 input[type=text] { font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel); color: var(--ink); flex: 1; min-width: 180px; }
 .empty { color: var(--muted); padding: 30px; text-align: center; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+.tile b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12px; color: var(--muted); }
 footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
 </style>
 </head>
@@ -100,6 +104,7 @@ footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
     <button class="small" onclick="fresh()">Start a fresh demo</button>
     <button class="small" onclick="gov()">AI governance</button>
   </div>
+  <div id="metrics" class="card" style="margin-top:10px"></div>
   <div id="toast"></div>
   <div id="gov"></div>
   <div class="grid">
@@ -170,6 +175,14 @@ function render() {
   $("safety").innerHTML = S.violations.length
     ? `<span class="pill bad">${S.violations.length} rule breaks</span>`
     : `<span class="pill ok">0 rule breaks</span><span class="pill ${S.audit_chain_ok ? "ok" : "bad"}">audit chain ${S.audit_chain_ok ? "verified" : "broken"}</span>`;
+  const M = S.metrics, d = v => v === null ? "–" : v + " d";
+  const tiles = [["Actionable results", M.actionable_results], ["Notified", M.notified], ["Understood", M.understood],
+    ["Referrals accepted", M.referrals_accepted], ["No-shows", M.no_shows], ["Overdue now", M.overdue_now],
+    ["Escalated", M.escalated], ["Closed with evidence", M.closed_with_evidence], ["Unresolved", M.unresolved],
+    ["Avg to notification", d(M.avg_days_to_notification)], ["Avg to referral accepted", d(M.avg_days_to_referral_accepted)],
+    ["Avg to closure", d(M.avg_days_to_closure)]];
+  $("metrics").innerHTML = `<div class="meta" style="margin-bottom:6px"><b>Closure and impact measures</b> · computed live from this demo's synthetic cases</div>
+    <div class="tiles">${tiles.map(([k, v]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("")}</div>`;
   $("toast").innerHTML = S.message ? `<div class="toast ${S.ok ? "" : "bad"}">${esc(S.message)}</div>` : "";
   $("list").innerHTML = S.cases.map(c => `
     <div class="card case ${c.id === sel ? "sel" : ""}" onclick="pick('${c.id}')">
