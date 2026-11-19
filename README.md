@@ -27,7 +27,7 @@ Week 1 of 5 — the case engine, the pathway format and the rule tests.
 
 ## Try it
 
-Open the live demo, or run it yourself with `make run` and open http://localhost:8080. Each
+Open the live demo at **https://itmam-85431195414.europe-west3.run.app** (synthetic data; AI assistance by Gemini 2.5 Flash-Lite, with a rules-only fallback), or run it yourself with `make run` and open http://localhost:8080. Each
 visitor gets a private sandbox with four synthetic patients and a demo clock:
 
 | Patient | What the demo shows |
