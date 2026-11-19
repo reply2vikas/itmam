@@ -1,0 +1,689 @@
+{
+  "$defs": {
+    "CareClock": {
+      "additionalProperties": false,
+      "description": "Overall clock from result issued until the attend stage is recorded.",
+      "properties": {
+        "target": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Target",
+          "type": "string"
+        },
+        "hard_limit": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Hard Limit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "hard_limit"
+      ],
+      "title": "CareClock",
+      "type": "object"
+    },
+    "ClosureRule": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "signers": {
+          "items": {
+            "enum": [
+              "coordinator",
+              "clinician",
+              "sender_clinician",
+              "receiver_clinician",
+              "supervisor"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Signers",
+          "type": "array"
+        },
+        "counts_as": {
+          "enum": [
+            "success",
+            "neutral",
+            "failure"
+          ],
+          "title": "Counts As",
+          "type": "string"
+        },
+        "requires_stage": {
+          "anyOf": [
+            {
+              "const": "outcome_recorded",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requires Stage"
+        },
+        "creates_watch": {
+          "default": false,
+          "title": "Creates Watch",
+          "type": "boolean"
+        },
+        "min_contact_attempts": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Contact Attempts"
+        }
+      },
+      "required": [
+        "evidence",
+        "signers",
+        "counts_as"
+      ],
+      "title": "ClosureRule",
+      "type": "object"
+    },
+    "Econsult": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "default": true,
+          "title": "Allowed",
+          "type": "boolean"
+        },
+        "reply_breach": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Reply Breach",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reply_breach"
+      ],
+      "title": "Econsult",
+      "type": "object"
+    },
+    "EscalationLadder": {
+      "additionalProperties": false,
+      "properties": {
+        "l1_to_l2": {
+          "default": {
+            "amount": 2,
+            "unit": "wd"
+          },
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "L1 To L2",
+          "type": "string"
+        },
+        "l2_to_l3": {
+          "default": {
+            "amount": 2,
+            "unit": "wd"
+          },
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "L2 To L3",
+          "type": "string"
+        },
+        "repeat_l3": {
+          "default": {
+            "amount": 2,
+            "unit": "wd"
+          },
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Repeat L3",
+          "type": "string"
+        }
+      },
+      "title": "EscalationLadder",
+      "type": "object"
+    },
+    "NoShow": {
+      "additionalProperties": false,
+      "properties": {
+        "rebook_breach": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Rebook Breach",
+          "type": "string"
+        },
+        "escalate_after": {
+          "minimum": 1,
+          "title": "Escalate After",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rebook_breach",
+        "escalate_after"
+      ],
+      "title": "NoShow",
+      "type": "object"
+    },
+    "OnReject": {
+      "additionalProperties": false,
+      "properties": {
+        "return_to": {
+          "const": "sender",
+          "default": "sender",
+          "title": "Return To",
+          "type": "string"
+        },
+        "reason_required": {
+          "const": true,
+          "default": true,
+          "title": "Reason Required",
+          "type": "boolean"
+        },
+        "reroute_breach": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Reroute Breach",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reroute_breach"
+      ],
+      "title": "OnReject",
+      "type": "object"
+    },
+    "PauseRule": {
+      "additionalProperties": false,
+      "properties": {
+        "max": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Max",
+          "type": "string"
+        },
+        "approver": {
+          "enum": [
+            "coordinator",
+            "clinician"
+          ],
+          "title": "Approver",
+          "type": "string"
+        },
+        "note_required": {
+          "default": false,
+          "title": "Note Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "max",
+        "approver"
+      ],
+      "title": "PauseRule",
+      "type": "object"
+    },
+    "Retry": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "After",
+          "type": "string"
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "const": "sms",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Channel"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "const": "phone_call",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task"
+        }
+      },
+      "required": [
+        "after"
+      ],
+      "title": "Retry",
+      "type": "object"
+    },
+    "Roles": {
+      "additionalProperties": false,
+      "properties": {
+        "sender": {
+          "title": "Sender",
+          "type": "string"
+        },
+        "sender_clinician": {
+          "title": "Sender Clinician",
+          "type": "string"
+        },
+        "receiver": {
+          "title": "Receiver",
+          "type": "string"
+        },
+        "receiver_clinician": {
+          "title": "Receiver Clinician",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sender",
+        "sender_clinician",
+        "receiver",
+        "receiver_clinician"
+      ],
+      "title": "Roles",
+      "type": "object"
+    },
+    "SimpleClock": {
+      "additionalProperties": false,
+      "properties": {
+        "breach": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Breach",
+          "type": "string"
+        }
+      },
+      "required": [
+        "breach"
+      ],
+      "title": "SimpleClock",
+      "type": "object"
+    },
+    "StageClock": {
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "enum": [
+            "sender",
+            "receiver"
+          ],
+          "title": "Owner",
+          "type": "string"
+        },
+        "expect": {
+          "title": "Expect",
+          "type": "string"
+        },
+        "warn": {
+          "anyOf": [
+            {
+              "examples": [
+                "2wd",
+                "5d"
+              ],
+              "pattern": "^\\d+(wd|d|h)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warn"
+        },
+        "breach": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Breach",
+          "type": "string"
+        },
+        "from": {
+          "default": "stage_start",
+          "enum": [
+            "stage_start",
+            "result_issued",
+            "appointment"
+          ],
+          "title": "From",
+          "type": "string"
+        },
+        "retries": {
+          "items": {
+            "$ref": "#/$defs/Retry"
+          },
+          "title": "Retries",
+          "type": "array"
+        },
+        "on_reject": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OnReject"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "no_show": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NoShow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "owner",
+        "expect",
+        "breach"
+      ],
+      "title": "StageClock",
+      "type": "object"
+    },
+    "Subjects": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "default": 1,
+          "enum": [
+            1,
+            2
+          ],
+          "title": "Count",
+          "type": "integer"
+        },
+        "contact": {
+          "default": "self",
+          "enum": [
+            "self",
+            "guardian"
+          ],
+          "title": "Contact",
+          "type": "string"
+        },
+        "joint_session_requires_consent": {
+          "default": false,
+          "title": "Joint Session Requires Consent",
+          "type": "boolean"
+        }
+      },
+      "title": "Subjects",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "result_codes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Result Codes",
+          "type": "array"
+        },
+        "urgency": {
+          "default": "standard",
+          "enum": [
+            "standard",
+            "urgent"
+          ],
+          "title": "Urgency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result_codes"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    },
+    "Watch": {
+      "additionalProperties": false,
+      "properties": {
+        "grace": {
+          "examples": [
+            "2wd",
+            "5d"
+          ],
+          "pattern": "^\\d+(wd|d|h)$",
+          "title": "Grace",
+          "type": "string"
+        },
+        "result_code": {
+          "title": "Result Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grace",
+        "result_code"
+      ],
+      "title": "Watch",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "trigger": {
+      "$ref": "#/$defs/Trigger"
+    },
+    "refer_after": {
+      "const": "acknowledged",
+      "default": "acknowledged",
+      "title": "Refer After",
+      "type": "string"
+    },
+    "calendar": {
+      "const": "uae_working_days",
+      "default": "uae_working_days",
+      "title": "Calendar",
+      "type": "string"
+    },
+    "subjects": {
+      "$ref": "#/$defs/Subjects"
+    },
+    "roles": {
+      "$ref": "#/$defs/Roles"
+    },
+    "languages": {
+      "items": {
+        "enum": [
+          "ar",
+          "en"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Languages",
+      "type": "array"
+    },
+    "messages": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Messages",
+      "type": "array"
+    },
+    "stages": {
+      "additionalProperties": {
+        "$ref": "#/$defs/StageClock"
+      },
+      "propertyNames": {
+        "enum": [
+          "notify",
+          "acknowledge",
+          "refer",
+          "accept",
+          "book",
+          "attend",
+          "outcome",
+          "close"
+        ]
+      },
+      "title": "Stages",
+      "type": "object"
+    },
+    "care_clock": {
+      "$ref": "#/$defs/CareClock"
+    },
+    "econsult": {
+      "$ref": "#/$defs/Econsult"
+    },
+    "callback": {
+      "$ref": "#/$defs/SimpleClock"
+    },
+    "call_task": {
+      "$ref": "#/$defs/SimpleClock"
+    },
+    "closure_signoff": {
+      "$ref": "#/$defs/SimpleClock"
+    },
+    "escalation": {
+      "$ref": "#/$defs/EscalationLadder"
+    },
+    "outcomes": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Outcomes",
+      "type": "array"
+    },
+    "closures": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ClosureRule"
+      },
+      "title": "Closures",
+      "type": "object"
+    },
+    "pauses": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PauseRule"
+      },
+      "title": "Pauses",
+      "type": "object"
+    },
+    "barriers": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Barriers",
+      "type": "array"
+    },
+    "watch": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Watch"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "name",
+    "trigger",
+    "roles",
+    "languages",
+    "messages",
+    "stages",
+    "care_clock",
+    "econsult",
+    "callback",
+    "call_task",
+    "closure_signoff",
+    "outcomes",
+    "closures",
+    "pauses",
+    "barriers"
+  ],
+  "title": "PathwayConfig",
+  "type": "object"
+}

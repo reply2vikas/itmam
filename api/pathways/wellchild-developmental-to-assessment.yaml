@@ -1,0 +1,78 @@
+# P3: Well-Child Visit developmental or autism screen returns "refer" -> specialist assessment.
+# A positive screen must end in a referral or a clinician's documented decision.
+# The subject is the child; contact and consent belong to the guardian.
+# Clock lengths are prototype assumptions.
+id: wellchild-developmental-to-assessment
+version: 1
+name: Well-Child developmental flag to specialist assessment
+trigger:
+  result_codes: [WELLCHILD_DEVELOPMENT_REFER, WELLCHILD_AUTISM_REFER, WELLCHILD_RESCREEN_DUE]
+  urgency: standard
+refer_after: acknowledged
+calendar: uae_working_days
+subjects:
+  count: 1
+  contact: guardian
+roles:
+  sender: wellchild_coordinator
+  sender_clinician: paediatrician
+  receiver: development_centre_coordinator
+  receiver_clinician: developmental_paediatrician
+languages: [ar, en]
+messages: [result_notice, reminder, referral_sent, appointment_confirmation,
+           missed_appointment, closure_summary]
+stages:
+  notify:      {owner: sender,   expect: guardian_notified,     warn: 1wd, breach: 2wd}
+  acknowledge: {owner: sender,   expect: guardian_acknowledged, warn: 3d,  breach: 5d,
+                retries: [{after: 2d, channel: sms}, {after: 3d, task: phone_call}]}
+  refer:       {owner: sender,   expect: referral_sent,         breach: 5wd, from: result_issued}
+  accept:      {owner: sender,   expect: referral_accepted,     warn: 2wd, breach: 3wd,
+                on_reject: {return_to: sender, reason_required: true, reroute_breach: 2wd}}
+  book:        {owner: receiver, expect: assessment_booked,     breach: 10wd}
+  attend:      {owner: receiver, expect: assessment_done,       breach: 1wd, from: appointment,
+                no_show: {rebook_breach: 5wd, escalate_after: 2}}
+  outcome:     {owner: receiver, expect: outcome_recorded,      breach: 10d}
+  close:       {owner: receiver, expect: case_closed,           breach: 5wd}
+care_clock: {target: 45d, hard_limit: 120d}   # result issued -> assessment done
+econsult: {allowed: true, reply_breach: 2wd}
+callback: {breach: 1wd}
+call_task: {breach: 1wd}
+closure_signoff: {breach: 2wd}
+outcomes: [services_started, monitor_and_rescreen, no_concerns]
+closures:
+  care_completed:
+    evidence: [assessment_report, next_step]
+    signers: [receiver_clinician]
+    counts_as: success
+    requires_stage: outcome_recorded
+  surveillance:              # "monitor and rescreen": watch the next Well-Child Visit
+    evidence: [assessment_report, next_due_date]
+    signers: [receiver_clinician]
+    counts_as: success
+    requires_stage: outcome_recorded
+    creates_watch: true
+  informed_decline:
+    evidence: [counselling_note, decision_record]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  transferred_out:
+    evidence: [receiving_org_acceptance]
+    signers: [coordinator]
+    counts_as: neutral
+  not_actionable:            # e.g. the child is already receiving services
+    evidence: [clinical_review_note]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  unreachable:
+    evidence: [contact_attempt_log, letter_sent]
+    signers: [clinician, supervisor]
+    counts_as: failure
+    min_contact_attempts: 6
+pauses:
+  travelling:      {max: 30d, approver: coordinator}
+  hospitalised:    {max: 30d, approver: coordinator}
+  patient_request: {max: 14d, approver: clinician}
+  other:           {max: 7d,  approver: clinician, note_required: true}
+barriers: [worry_about_labels, transport, waiting_list, work_or_childcare, language,
+           cost_or_insurance, already_in_services, wrong_person, other]
+watch: {grace: 30d, result_code: WELLCHILD_RESCREEN_DUE}

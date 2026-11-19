@@ -1,0 +1,71 @@
+# P2: premarital "at-risk couple" result -> genetic counselling.
+# Itmam never stores or shows genetic details: the lab's flag is the input, and disclosure
+# happens in counselling under the programme's policy. Success is counselling held and
+# options understood -- never a marriage decision. Clock lengths are prototype assumptions.
+id: premarital-at-risk-to-counselling
+version: 1
+name: Premarital at-risk couple to genetic counselling
+trigger:
+  result_codes: [PREMARITAL_AT_RISK_COUPLE]
+  urgency: standard
+refer_after: acknowledged
+calendar: uae_working_days
+subjects:
+  count: 2                   # each partner is notified and acknowledges separately
+  contact: self
+  joint_session_requires_consent: true
+roles:
+  sender: premarital_coordinator
+  sender_clinician: family_physician
+  receiver: genetics_coordinator
+  receiver_clinician: genetic_counsellor
+languages: [ar, en]
+messages: [result_notice, reminder, referral_sent, appointment_confirmation,
+           missed_appointment, closure_summary]
+stages:
+  notify:      {owner: sender,   expect: both_partners_notified,     warn: 1wd, breach: 2wd}
+  acknowledge: {owner: sender,   expect: both_partners_acknowledged, warn: 3d,  breach: 5d,
+                retries: [{after: 2d, channel: sms}, {after: 3d, task: phone_call}]}
+  refer:       {owner: sender,   expect: referral_sent,              breach: 3wd, from: result_issued}
+  accept:      {owner: sender,   expect: referral_accepted,          warn: 1wd, breach: 2wd,
+                on_reject: {return_to: sender, reason_required: true, reroute_breach: 1wd}}
+  book:        {owner: receiver, expect: counselling_booked,         breach: 3wd}
+  attend:      {owner: receiver, expect: counselling_held,           breach: 1wd, from: appointment,
+                no_show: {rebook_breach: 3wd, escalate_after: 2}}
+  outcome:     {owner: receiver, expect: counselling_recorded,       breach: 5wd}
+  close:       {owner: receiver, expect: case_closed,                breach: 5wd}
+care_clock: {target: 14d, hard_limit: 45d}   # result issued -> counselling held
+econsult: {allowed: true, reply_breach: 2wd}
+callback: {breach: 1wd}
+call_task: {breach: 1wd}
+closure_signoff: {breach: 2wd}
+outcomes: [counselled_options_understood, counselled_follow_on_referral]
+closures:
+  care_completed:
+    evidence: [counselling_record, options_discussed]
+    signers: [receiver_clinician]
+    counts_as: success
+    requires_stage: outcome_recorded
+  informed_decline:
+    evidence: [counselling_offer_record, decision_record]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  transferred_out:
+    evidence: [receiving_org_acceptance]
+    signers: [coordinator]
+    counts_as: neutral
+  not_actionable:
+    evidence: [clinical_review_note]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  unreachable:
+    evidence: [contact_attempt_log, letter_sent]
+    signers: [clinician, supervisor]
+    counts_as: failure
+    min_contact_attempts: 6
+pauses:
+  travelling:      {max: 21d, approver: coordinator}
+  patient_request: {max: 14d, approver: clinician}
+  other:           {max: 7d,  approver: clinician, note_required: true}
+barriers: [privacy_concern, family_pressure, fear, wants_partner_present, schedule, language,
+           counselled_elsewhere, wrong_person, other]

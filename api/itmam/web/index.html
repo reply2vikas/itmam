@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Itmam demo</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d2327; --muted: #5d6870; --line: #e2e0d8;
+  --brand: #0f6b5c; --brand-ink: #ffffff; --soft: #e7f2ef; --warn: #b26a00; --warn-soft: #fdf1dc;
+  --bad: #b3261e; --bad-soft: #fbe5e3; --ok: #1d7a3a; --ok-soft: #e3f3e7; --ai: #4b3fa8; --ai-soft: #ece9fb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14181b; --panel: #1c2226; --ink: #e8ecee; --muted: #9aa6ad; --line: #2e363b;
+    --brand: #3fb59e; --brand-ink: #0b1f1b; --soft: #17302b; --warn: #f0b04a; --warn-soft: #3a2c13;
+    --bad: #f2867d; --bad-soft: #3c1d1b; --ok: #6fd18c; --ok-soft: #173020; --ai: #a99cf5; --ai-soft: #262142;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 18px 16px 8px; max-width: 1200px; margin: auto; }
+h1 { margin: 0; font-size: 22px; } h1 span { color: var(--brand); font-weight: 600; margin-left: 6px; }
+.tag { color: var(--muted); margin: 2px 0 0; }
+.wrap { max-width: 1200px; margin: auto; padding: 0 16px 40px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
+.bar .clock { font-weight: 600; margin-right: auto; }
+.stat { font-size: 13px; color: var(--muted); } .stat b { color: var(--ink); }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--brand); }
+button.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+button.small { padding: 4px 9px; font-size: 13px; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--soft);
+  color: var(--brand); margin-right: 4px; white-space: nowrap; }
+.pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.ai { background: var(--ai-soft); color: var(--ai); }
+.toast { padding: 9px 12px; border-radius: 10px; margin: 8px 0; background: var(--ok-soft); color: var(--ok); }
+.toast.bad { background: var(--bad-soft); color: var(--bad); }
+.tour { font-size: 14px; color: var(--muted); background: var(--panel); border: 1px dashed var(--line);
+  border-radius: 12px; padding: 10px 14px; }
+.tour ol { margin: 4px 0 0; padding-left: 20px; }
+.grid { display: grid; grid-template-columns: 320px 1fr; gap: 14px; margin-top: 12px; }
+@media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.case { cursor: pointer; margin-bottom: 10px; }
+.case.sel { border-color: var(--brand); box-shadow: 0 0 0 2px var(--soft); }
+.case h3 { margin: 0 0 4px; font-size: 16px; display: flex; justify-content: space-between; gap: 6px; }
+.meta { font-size: 13px; color: var(--muted); }
+.steps { display: flex; gap: 3px; margin: 8px 0 4px; }
+.steps i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.steps i.done { background: var(--brand); }
+.labels { display: grid; grid-template-columns: repeat(9, 1fr); font-size: 10.5px; color: var(--muted); }
+.labels span { text-align: center; overflow: hidden; text-overflow: ellipsis; }
+h2 { font-size: 18px; margin: 0 0 4px; } h4 { margin: 14px 0 6px; font-size: 14px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.agent { border-left: 4px solid var(--ai); background: var(--ai-soft); border-radius: 8px; padding: 9px 12px; margin: 8px 0; }
+.agent .who { font-weight: 600; color: var(--ai); text-transform: capitalize; }
+.agent .checks { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.msg { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-top: 6px; }
+.msg[dir="rtl"] { font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif; }
+.timeline { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.timeline li { padding: 6px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 120px 1fr; gap: 8px; }
+.timeline .t { color: var(--muted); font-size: 12.5px; }
+.timeline .esc { color: var(--bad); } .timeline .warnx { color: var(--warn); } .timeline .aix { color: var(--ai); }
+input[type=text] { font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); flex: 1; min-width: 180px; }
+.empty { color: var(--muted); padding: 30px; text-align: center; }
+footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Itmam <span>إتمام</span></h1>
+  <p class="tag">Every actionable screening result, owned until care is complete. Synthetic patients, demo clock.</p>
+</header>
+<div class="wrap">
+  <div class="tour">
+    <b>Two-minute tour</b>
+    <ol>
+      <li>Pick <b>Omar</b>: he never opened his result. Press <b>+1 day</b> a few times and watch reminders, then escalation.</li>
+      <li>Pick <b>Mariam</b>: press <b>Do the next correct step</b> to walk her to closure (skip ahead to reach the appointment).</li>
+      <li>Press <b>Ask the agents</b>: four agents propose; only people act, and the engine checks every rule.</li>
+      <li>Under <b>Try a mistake</b>, watch the rules refuse unsafe actions, including the AI trying to close a case.</li>
+    </ol>
+  </div>
+  <div class="bar">
+    <span class="clock" id="clock">Loading…</span>
+    <span class="stat" id="ledger"></span>
+    <span class="stat" id="safety"></span>
+    <button class="small" onclick="advance(1)">+1 day</button>
+    <button class="small" onclick="advance(7)">+7 days</button>
+    <button class="small" onclick="fresh()">Start a fresh demo</button>
+  </div>
+  <div id="toast"></div>
+  <div class="grid">
+    <div id="list"></div>
+    <div id="detail" class="card"><div class="empty">Choose a patient.</div></div>
+  </div>
+  <footer>
+    All data is synthetic. Agents only propose; every change goes through the case engine and its
+    ten rules. Arabic text is a draft pending native review. Source and test results are in the repository.
+  </footer>
+</div>
+<script>
+const STAGES = ["issued","notified","acknowledged","referred","accepted","booked","attended","outcome recorded","closed"];
+let S = null, sel = null, agentOut = {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function api(path, method = "GET", body) {
+  const r = await fetch(path, { method, headers: {"Content-Type": "application/json"},
+    body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 404 && path.startsWith("/api/demo/")) { await fresh(); return null; }
+  return r.json();
+}
+function save() { try { localStorage.setItem("itmam-sid", S.sid); } catch (e) {} }
+async function fresh() {
+  S = await api("/api/demo", "POST"); save(); sel = null; agentOut = {}; render();
+}
+async function load() {
+  let sid = null; try { sid = localStorage.getItem("itmam-sid"); } catch (e) {}
+  if (sid) { const r = await fetch("/api/demo/" + sid); if (r.ok) { S = await r.json(); render(); return; } }
+  await fresh();
+}
+async function advance(days) { take(await api(`/api/demo/${S.sid}/advance`, "POST", {days})); }
+async function next(cid) { take(await api(`/api/demo/${S.sid}/cases/${cid}/next`, "POST", {})); }
+async function mistake(cid, kind) { take(await api(`/api/demo/${S.sid}/cases/${cid}/mistake/${kind}`, "POST")); }
+async function reply(cid) {
+  const text = $("reply").value.trim(); if (!text) return;
+  take(await api(`/api/demo/${S.sid}/cases/${cid}/reply`, "POST", {text}));
+}
+async function review(cid, sug, accept) {
+  take(await api(`/api/demo/${S.sid}/cases/${cid}/suggestions/${sug}`, "POST", {accept}));
+}
+async function agents(cid) {
+  const r = await api(`/api/demo/${S.sid}/cases/${cid}/agents`);
+  agentOut[cid] = r.proposals; renderDetail();
+}
+async function applyRoute(cid, org) {
+  take(await api(`/api/demo/${S.sid}/cases/${cid}/next`, "POST", {to_org: org}));
+}
+function take(r) { if (!r) return; S = r; agentOut = {}; render(); }
+
+function render() {
+  if (!S) return;
+  $("clock").textContent = "UAE time: " + S.clock;
+  const L = S.ledger;
+  $("ledger").innerHTML = `Results <b>${L.received}</b> · open <b>${L.open}</b> · closed <b>${L.closed}</b>`;
+  $("safety").innerHTML = S.violations.length
+    ? `<span class="pill bad">${S.violations.length} rule breaks</span>`
+    : `<span class="pill ok">0 rule breaks</span><span class="pill ${S.audit_chain_ok ? "ok" : "bad"}">audit chain ${S.audit_chain_ok ? "verified" : "broken"}</span>`;
+  $("toast").innerHTML = S.message ? `<div class="toast ${S.ok ? "" : "bad"}">${esc(S.message)}</div>` : "";
+  $("list").innerHTML = S.cases.map(c => `
+    <div class="card case ${c.id === sel ? "sel" : ""}" onclick="pick('${c.id}')">
+      <h3><span>${esc(c.name)}</span><span>${badges(c)}</span></h3>
+      <div class="meta">${esc(c.stage)} · owner: ${esc(c.owner)}</div>
+      <div class="steps">${STAGES.map((s, i) => `<i class="${i <= c.stage_index ? "done" : ""}"></i>`).join("")}</div>
+      ${c.next_deadline ? `<div class="meta">Next deadline (${esc(c.next_deadline.what)}): ${esc(c.next_deadline.at)}</div>` : ""}
+    </div>`).join("");
+  renderDetail();
+}
+function badges(c) {
+  let b = "";
+  if (c.urgency === "urgent") b += `<span class="pill bad">urgent</span>`;
+  if (c.level) b += `<span class="pill ${c.level >= 2 ? "bad" : "warn"}">L${c.level}</span>`;
+  if (c.overdue) b += `<span class="pill warn">overdue</span>`;
+  if (c.closure) b += `<span class="pill ok">closed</span>`;
+  if (c.paused) b += `<span class="pill">paused</span>`;
+  return b;
+}
+function pick(cid) { sel = cid; render(); }
+
+function renderDetail() {
+  const c = S && S.cases.find(x => x.id === sel);
+  if (!c) { $("detail").innerHTML = `<div class="empty">Choose a patient.</div>`; return; }
+  const props = agentOut[c.id];
+  $("detail").innerHTML = `
+    <h2>${esc(c.name)} <span class="meta">· ${c.language === "ar" ? "Arabic" : "English"} · ${esc(c.insurance)}${c.female_endoscopist ? " · prefers a female endoscopist" : ""}</span></h2>
+    <div class="meta">${esc(c.note)}</div>
+    <div class="row" style="margin-top:6px">${badges(c)}<span class="pill">owner: ${esc(c.owner)} (${esc(c.owner_role)})</span>
+      ${c.barriers.map(b => `<span class="pill warn">barrier: ${esc(b.replace(/_/g, " "))}</span>`).join("")}</div>
+    <div class="steps">${STAGES.map((s, i) => `<i class="${i <= c.stage_index ? "done" : ""}"></i>`).join("")}</div>
+    <div class="labels">${STAGES.map(s => `<span title="${s}">${s}</span>`).join("")}</div>
+    ${c.next_deadline ? `<p class="meta">Next deadline: <b>${esc(c.next_deadline.what)}</b> by ${esc(c.next_deadline.at)}</p>` : ""}
+    <div class="row">
+      <button class="primary" onclick="next('${c.id}')" ${c.closure ? "disabled" : ""}>Do the next correct step</button>
+      <button onclick="agents('${c.id}')">Ask the agents</button>
+    </div>
+    ${props ? `<h4>Agent proposals</h4>${props.map(p => agentCard(c, p)).join("")}` : ""}
+    <h4>Patient replies</h4>
+    <div class="row">
+      <input type="text" id="reply" placeholder="Type a reply, e.g. I don't have a car" ${c.closure ? "disabled" : ""}>
+      <button onclick="reply('${c.id}')">Send to the Navigator</button>
+    </div>
+    <div class="row" style="margin-top:6px">${["I'm scared of the procedure", "لازم أشاور زوجي", "I already had one abroad"].map(t =>
+      `<button class="small" onclick="$('reply').value=this.textContent">${esc(t)}</button>`).join("")}</div>
+    ${c.pending_suggestions.map(s => `<div class="agent"><span class="who">AI suggestion</span>: ${esc(s.codes.join(", "))}
+      <div class="row" style="margin-top:6px"><button class="small primary" onclick="review('${c.id}','${s.id}',true)">Approve as coordinator</button>
+      <button class="small" onclick="review('${c.id}','${s.id}',false)">Reject</button></div></div>`).join("")}
+    <h4>Try a mistake</h4>
+    <div class="row">
+      <button class="small" onclick="mistake('${c.id}','ai_closes')">AI closes the case</button>
+      <button class="small" onclick="mistake('${c.id}','close_without_evidence')">Close without evidence</button>
+      <button class="small" onclick="mistake('${c.id}','wrong_org_accepts')">Wrong unit accepts</button>
+      <button class="small" onclick="mistake('${c.id}','coordinator_pauses_urgent')">Coordinator pauses urgent case</button>
+    </div>
+    <h4>Timeline (hash-chained audit)</h4>
+    <ul class="timeline">${c.timeline.slice().reverse().map(e => `<li><span class="t">${esc(e.at)}</span>
+      <span class="${e.action === "escalated" ? "esc" : e.action === "warning" ? "warnx" : e.action.startsWith("ai_") ? "aix" : ""}">${esc(e.text)}
+      ${e.detail ? `<span class="meta"> · ${esc(e.detail)}</span>` : ""}<span class="meta"> · ${esc(e.by.replace(/_/g, " "))}</span></span></li>`).join("")}</ul>`;
+}
+function agentCard(c, p) {
+  const d = p.details;
+  let body = esc(p.summary);
+  if (p.agent === "navigator" && d.text) body += `<div class="msg" dir="${d.language === "ar" ? "rtl" : "ltr"}">${esc(d.text)}</div>${d.review ? `<div class="checks">${esc(d.review)}</div>` : ""}`;
+  if (p.agent === "router" && d.excluded && d.excluded.length) body += `<div class="checks">Excluded: ${esc(d.excluded.join("; "))}</div>`;
+  if (p.agent === "router" && p.apply) body += `<div class="row" style="margin-top:6px"><button class="small primary" onclick="applyRoute('${c.id}','${esc(d.org)}')">Coordinator approves: send referral</button></div>`;
+  if (p.agent === "verifier" && d.issues && d.issues.length) body += `<div class="checks">${esc(d.issues.join("; "))}</div>`;
+  return `<div class="agent"><span class="who">${esc(p.agent)}</span> <span class="pill ai">${esc(p.source)}</span><div>${body}</div>
+    <div class="checks">Checks: ${esc(p.checks.join(" · "))}</div></div>`;
+}
+load();
+</script>
+</body>
+</html>

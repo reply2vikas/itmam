@@ -1,0 +1,82 @@
+# P1: positive colorectal screening result -> diagnostic colonoscopy (the hero pathway).
+# Every clock length below is a prototype assumption, to be confirmed with the clinical
+# advisor and set by each programme in a pilot. wd = working days, d = calendar days.
+id: crc-positive-to-colonoscopy
+version: 1
+name: Positive colorectal screening result to diagnostic colonoscopy
+trigger:
+  # Abu Dhabi's blood-based screening test needs a colonoscopy to confirm any positive result.
+  result_codes: [FIT_POSITIVE, CRC_BLOOD_TEST_POSITIVE, CRC_SURVEILLANCE_DUE]
+  urgency: standard          # programme rule; clinicians may raise it, AI never can
+refer_after: acknowledged
+calendar: uae_working_days
+subjects:
+  count: 1
+  contact: self
+roles:
+  sender: screening_coordinator
+  sender_clinician: primary_care_physician
+  receiver: endoscopy_coordinator
+  receiver_clinician: gastroenterologist
+languages: [ar, en]
+messages: [result_notice, reminder, referral_sent, appointment_confirmation,
+           missed_appointment, closure_summary]
+stages:
+  notify:      {owner: sender,   expect: message_delivered,    warn: 1wd, breach: 2wd}
+  acknowledge: {owner: sender,   expect: patient_acknowledged, warn: 3d,  breach: 5d,
+                retries: [{after: 2d, channel: sms}, {after: 3d, task: phone_call}]}
+  refer:       {owner: sender,   expect: referral_sent,        breach: 5wd, from: result_issued}
+  accept:      {owner: sender,   expect: referral_accepted,    warn: 2wd, breach: 3wd,
+                on_reject: {return_to: sender, reason_required: true, reroute_breach: 2wd}}
+  book:        {owner: receiver, expect: appointment_booked,   breach: 10wd}
+  attend:      {owner: receiver, expect: colonoscopy_done,     breach: 1wd, from: appointment,
+                no_show: {rebook_breach: 5wd, escalate_after: 2}}
+  outcome:     {owner: receiver, expect: outcome_recorded,     breach: 14d}
+  close:       {owner: receiver, expect: case_closed,          breach: 5wd}
+# Overall clock from result to colonoscopy. The hard limit sits well inside the 10 months
+# at which Corley et al. (JAMA 2017) saw higher risk of cancer and advanced-stage disease.
+care_clock: {target: 60d, hard_limit: 180d}
+econsult: {allowed: true, reply_breach: 2wd}
+callback: {breach: 1wd}
+call_task: {breach: 1wd}
+closure_signoff: {breach: 2wd}
+outcomes: [no_significant_findings, polyps_removed, cancer_suspected, incomplete_needs_repeat]
+closures:
+  care_completed:
+    evidence: [outcome_record, next_step]
+    signers: [receiver_clinician]
+    counts_as: success
+    requires_stage: outcome_recorded
+  surveillance:
+    evidence: [outcome_record, next_due_date]
+    signers: [receiver_clinician]
+    counts_as: success
+    requires_stage: outcome_recorded
+    creates_watch: true
+  informed_decline:
+    evidence: [counselling_note, decision_record]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  transferred_out:
+    evidence: [receiving_org_acceptance]
+    signers: [coordinator]
+    counts_as: neutral
+  not_actionable:
+    evidence: [clinical_review_note]
+    signers: [clinician, clinician]
+    counts_as: neutral
+  unreachable:
+    evidence: [contact_attempt_log, letter_sent]
+    signers: [clinician, supervisor]
+    counts_as: failure
+    min_contact_attempts: 6
+pauses:
+  travelling:               {max: 30d, approver: coordinator}
+  hospitalised:             {max: 30d, approver: coordinator}
+  patient_request:          {max: 14d, approver: clinician}
+  awaiting_external_result: {max: 21d, approver: coordinator}
+  second_opinion:           {max: 21d, approver: clinician}
+  other:                    {max: 7d,  approver: clinician, note_required: true}
+barriers: [fear, bowel_prep, transport, cost_or_insurance, work_or_childcare, language,
+           family_discussion, done_elsewhere, wrong_person, other]
+watch: {grace: 30d, result_code: CRC_SURVEILLANCE_DUE}
