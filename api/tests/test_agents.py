@@ -70,5 +70,5 @@ def test_app_install_files_are_served() -> None:
 def test_closure_measures_are_reported() -> None:
     client = TestClient(app)
     metrics = client.post("/api/demo").json()["metrics"]
-    assert metrics["actionable_results"] == 4
-    assert metrics["notified"] == 4 and metrics["unresolved"] == 4
+    assert metrics["actionable_results"] == 5
+    assert metrics["notified"] == 5 and metrics["unresolved"] == 5

@@ -28,6 +28,8 @@ from itmam.domain.model import Case
 from itmam.domain.roles import SUPERVISOR
 
 P1 = "crc-positive-to-colonoscopy"
+P2 = "premarital-at-risk-to-counselling"
+GENETICS = "Genetics Centre G"
 SCREENING = "Screening Clinic A"
 START = datetime(2026, 11, 16, 6, 0, tzinfo=UTC)  # Monday 10:00 in the UAE
 
@@ -135,14 +137,16 @@ class Sandbox:
                     e.acknowledge(Actor.contact(subject.contact_id), case_id, subject.id, True)
             return "The patient opened the link and passed the understanding check."
         if c.stage == Stage.ACKNOWLEDGED:
-            target = to_org or route(self, case_id).details.get("org")
+            target: str | None = to_org
+            if not target:
+                target = GENETICS if c.pathway_id != P1 else route(self, case_id).details.get("org")
             if not target:
                 raise CommandRejected("no_provider", "no in-network provider: escalate")
             e.send_referral(
                 s.coordinator(SCREENING),
                 case_id,
                 target,
-                "Positive screening result; patient informed and agrees to colonoscopy.",
+                "Actionable screening result; patient informed and agrees to the next step.",
                 s.clinician(SCREENING),
             )
             return (
@@ -155,31 +159,60 @@ class Sandbox:
             return f"{referral.to_org} accepted the referral and now owns the case."
         if c.stage == Stage.ACCEPTED:
             when = self.clock.now() + timedelta(days=5)
-            e.book_appointment(s.coordinator(c.owner.org), case_id, when)
             local = when.astimezone(UAE_TZ).strftime("%a %d %b, %H:%M")
-            return f"Colonoscopy booked for {local}."
+            if len(c.subjects) > 1:
+                waiting = [x for x in c.subjects if "joint_session" not in x.consents]
+                if waiting:
+                    for x in waiting:
+                        e.record_consent(Actor.contact(x.contact_id), case_id, x.id)
+                    return "The other partner gave their own consent to a joint session."
+                e.book_appointment(s.coordinator(c.owner.org), case_id, when, joint=True)
+                return f"Joint counselling session booked for {local}, with both consents."
+            e.book_appointment(s.coordinator(c.owner.org), case_id, when)
+            return f"Appointment booked for {local}."
         if c.stage == Stage.BOOKED:
             appointment = c.appointments[-1].at
             if self.clock.now() < appointment:
                 local = appointment.astimezone(UAE_TZ).strftime("%a %d %b")
                 return f"The appointment is on {local}. Skip ahead to reach it."
             e.record_attendance(s.coordinator(c.owner.org), case_id, True)
-            return "The patient attended the colonoscopy."
+            return "The patient attended."
         if c.stage == Stage.ATTENDED:
-            e.record_outcome(s.clinician(c.owner.org), case_id, "polyps_removed")
-            return "The gastroenterologist recorded the outcome: polyps removed."
+            p = e.pathway_of(c)
+            outcome = "polyps_removed" if c.pathway_id == P1 else p.outcomes[0]
+            e.record_outcome(s.clinician(c.owner.org), case_id, outcome)
+            return f"The clinician recorded the outcome: {outcome.replace('_', ' ')}."
         if c.stage == Stage.OUTCOME_RECORDED:
+            record = self.malaffi_record(c)
             if c.pending_closure is None:
-                due = (self.clock.now() + timedelta(days=3 * 365)).date().isoformat()
-                e.propose_closure(
-                    s.coordinator(c.owner.org),
-                    case_id,
-                    "surveillance",
-                    {"outcome_record": "DOC-COLONOSCOPY-REPORT", "next_due_date": due},
-                )
+                if c.pathway_id == P1:
+                    due = (self.clock.now() + timedelta(days=3 * 365)).date().isoformat()
+                    e.propose_closure(
+                        s.coordinator(c.owner.org),
+                        case_id,
+                        "surveillance",
+                        {"outcome_record": record, "next_due_date": due},
+                    )
+                else:
+                    e.propose_closure(
+                        s.coordinator(c.owner.org),
+                        case_id,
+                        "care_completed",
+                        {"counselling_record": record, "options_discussed": record},
+                    )
             e.sign_closure(s.clinician(c.owner.org), case_id)
-            return "Closed to surveillance with evidence and a clinician's signature."
+            return (
+                "Closed with T3 evidence: the visit report was confirmed through Malaffi "
+                "(simulated), and a clinician signed."
+            )
         return "Nothing to do."
+
+    def malaffi_record(self, c: Case) -> str:
+        """A simulated Malaffi lookup: once a visit is recorded, the exchange holds the report.
+        There is no real Malaffi connection; the reference is synthetic and labelled so."""
+        if c.stage not in (Stage.ATTENDED, Stage.OUTCOME_RECORDED):
+            raise CommandRejected("no_record", "Malaffi has no visit record for this case yet")
+        return f"malaffi:ENC-SYN-{c.id} (simulated)"
 
     # ------------------------------------------------------------------- views
 
@@ -191,6 +224,22 @@ class Sandbox:
             "audit_events": len(self.engine.audit),
             "audit_chain_ok": not self.engine.audit.verify(),
             "metrics": self.metrics(),
+            "insights": self.insights(),
+        }
+
+    def insights(self) -> dict[str, Any]:
+        from itmam.insights import delay_attribution, leakage, pre_breach
+
+        now = self.clock.now()
+        names = {cid: p.name for cid, p in self.profiles.items()}
+        soon = [
+            {**x, "name": names.get(x["case_id"], x["case_id"])}
+            for x in pre_breach(self.engine, now)
+        ]
+        return {
+            "stuck_points": leakage(self.engine, now),
+            "pre_breach": soon,
+            "days_held": delay_attribution(self.engine, now),
         }
 
     def metrics(self) -> dict[str, Any]:
@@ -249,7 +298,7 @@ def _approve_templates(registry: TemplateRegistry, pathways: dict[str, PathwayCo
 
 
 def new_sandbox() -> Sandbox:
-    """A fresh demo world with four synthetic patients at different points of the journey."""
+    """A fresh demo world with five synthetic cases at different points of the journey."""
     pathways = load_pathways()
     clock = ManualClock(START)
     templates = TemplateRegistry()
@@ -279,6 +328,16 @@ def new_sandbox() -> Sandbox:
         box.next_step(case_id)  # acknowledged
 
     engine.raise_urgency(staff.clinician(SCREENING), sara, "Rectal bleeding reported.")
+
+    # A premarital at-risk couple: one case, two people, each understands and consents alone.
+    partners = [NewSubject("SYN-P-5", "SYN-C-5", "ar"), NewSubject("SYN-P-6", "SYN-C-6", "ar")]
+    couple = engine.ingest_result(FEED, "SYN-R-5", "PREMARITAL_AT_RISK_COUPLE", partners, SCREENING)
+    box.profiles[couple] = Profile(
+        "Aisha & Khalid", "Thiqa", note="Premarital couple: one case, two people, two consents."
+    )
+    for _ in range(4):
+        box.next_step(couple)  # notified, both understood, referred, accepted
+    engine.record_consent(Actor.contact("SYN-C-5"), couple, "SYN-P-5")
 
     box.next_step(rashid, to_org="Endoscopy Unit C")
     box.next_step(rashid)  # accepted

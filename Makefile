@@ -1,7 +1,7 @@
 API := api
 PY ?= python3
 
-.PHONY: install lint format typecheck test demo bench deploy proptest proptest-10k proptest-100k mutation-check check schema run docker
+.PHONY: install lint format typecheck test demo bench sim deploy proptest proptest-10k proptest-100k mutation-check check schema run docker
 
 install:            ## install the API package with test tools (Python 3.11+)
 	cd $(API) && $(PY) -m pip install -e ".[dev]"
@@ -23,6 +23,9 @@ demo:               ## a narrated run: two synthetic patients, one closes, one e
 
 bench:              ## run the 67-case agent benchmark; writes docs/agent-benchmark.md
 	cd $(API) && $(PY) -m itmam.agents.bench
+
+sim:                ## Itmam Twin what-if simulation; writes docs/simulation.md
+	cd $(API) && $(PY) -m itmam.simulation
 
 deploy:             ## deploy to Cloud Run (one instance keeps each visitor's sandbox)
 	gcloud run deploy itmam --source . --region europe-west3 --allow-unauthenticated \

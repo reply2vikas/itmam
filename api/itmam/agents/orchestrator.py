@@ -45,9 +45,17 @@ def run_agents(box: Sandbox, case_id: str) -> dict[str, Any]:
     if case.is_open and case.stage in ROUTING_STAGES:
         proposals.append(route(box, case_id))
     if case.is_open and case.stage == Stage.OUTCOME_RECORDED:
-        due = (box.clock.now() + timedelta(days=3 * 365)).date().isoformat()
-        closure_evidence = {"outcome_record": "DOC-COLONOSCOPY-REPORT", "next_due_date": due}
-        proposals.append(verify_closure(box, case_id, "surveillance", closure_evidence))
+        record = box.malaffi_record(case)
+        if case.pathway_id.startswith("crc"):
+            due = (box.clock.now() + timedelta(days=3 * 365)).date().isoformat()
+            closure_evidence = {"outcome_record": record, "next_due_date": due}
+            proposals.append(verify_closure(box, case_id, "surveillance", closure_evidence))
+        else:
+            closure_evidence = {
+                kind: record
+                for kind in box.engine.pathway_of(case).closures["care_completed"].evidence
+            }
+            proposals.append(verify_closure(box, case_id, "care_completed", closure_evidence))
     inputs = evidence(box, case_id)
     missing = [name for name, present in inputs.items() if not present]
     score = round(100 * (len(inputs) - len(missing)) / len(inputs))

@@ -126,20 +126,23 @@ def chase(box: Sandbox, case_id: str) -> Proposal:
                 "high",
                 f"Missed appointment ({case.no_shows}): {fix}, then rebook.",
             )
-        return say("book", "receiving coordinator", "normal", "Book the colonoscopy.")
+        visit = "colonoscopy" if case.pathway_id.startswith("crc") else "appointment"
+        return say("book", "receiving coordinator", "normal", f"Book the {visit}.")
     if case.stage == Stage.BOOKED:
         return say(
             "reminder",
             "system",
             "low",
-            "Booked: send the bowel-preparation reminder two days before.",
+            "Booked: send the bowel-preparation reminder two days before."
+            if case.pathway_id.startswith("crc")
+            else "Booked: send the reminder two days before.",
         )
     if case.stage == Stage.ATTENDED:
         return say(
             "chase_outcome",
             "receiving clinician",
             "high" if overdue else "normal",
-            "Colonoscopy done: the gastroenterologist records the outcome.",
+            "Visit done: the receiving clinician records the outcome.",
         )
     return say(
         "propose_closure",

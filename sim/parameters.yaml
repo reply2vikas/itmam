@@ -1,0 +1,23 @@
+# Itmam Twin parameters. Every rate is ASSUMED unless a source is named.
+# The "without follow-up" rates are tuned so completion lands near the published Abu Dhabi
+# baseline: 30.5% of FIT-positive patients had a colonoscopy (Abu Dhabi, 2015-16).
+run:
+  cohort: 400       # synthetic FIT-positive results
+  days: 180         # horizon
+  seed: 7
+patient:
+  never_respond: 0.3              # assumed: share who never engage, whatever is done (same in both)
+  delivered: 0.9                  # assumed: daily chance the result notice is delivered
+  respond_daily: 0.008            # assumed: daily chance of reading and confirming, unprompted
+  respond_when_contacted: 0.02    # assumed: chance a reminder or call gets a response that day
+  attend: 0.75                    # assumed: shows up without reminders
+  attend_with_reminder: 0.8      # assumed: shows up with preparation reminders
+  rebook_on_own: 0.01             # assumed: daily chance a no-show rebooks unprompted
+  rebook_with_support: 0.05        # assumed: daily chance after a navigator call
+unit:
+  refer_daily: 0.1               # assumed: daily chance the clinic sends the referral
+  refer_when_chased: 0.12          # assumed
+  accept_daily: 0.07              # assumed: daily chance the unit accepts
+  accept_when_chased: 0.1         # assumed
+  book_daily: 0.07                 # assumed
+  days_to_slot: 10                # assumed: days from booking to the procedure

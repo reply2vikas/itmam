@@ -1,4 +1,4 @@
-"""The ten rules that must hold after every command. `check_all` returns every violation
+"""The fifteen rules that must hold after every command. `check_all` returns every violation
 it finds; the property-based test calls it after each random step."""
 
 from __future__ import annotations
@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from itmam.domain.audit import case_fingerprint
+from itmam.domain.evidence import ladder_problems
 from itmam.domain.model import (
     RECEIVER_STAGES,
     ActorKind,
@@ -48,6 +49,11 @@ def check_all(engine: Engine) -> list[Violation]:
         i8_ledger_balances,
         i9_closed_is_final,
         i10_approved_messages_only,
+        i11_joint_sessions_need_every_consent,
+        i12_care_clock_never_restarts,
+        i13_time_runs_forward,
+        i14_understood_before_referral,
+        i15_evidence_ladder,
     ):
         found.extend(check(engine))
     return found
@@ -257,4 +263,77 @@ def i10_approved_messages_only(engine: Engine) -> list[Violation]:
                 ref, message.sent_at
             ):
                 out.append(Violation("I10", case.id, f"unapproved message {message.id}"))
+    return out
+
+
+# --------------------------------------------------------------- I11 to I15
+
+
+_STAGE_ORDER = list(Stage)
+
+
+def i11_joint_sessions_need_every_consent(engine: Engine) -> list[Violation]:
+    """A joint session (for example a premarital couple's counselling) is booked only when every
+    person in the case has recorded their own consent."""
+    out: list[Violation] = []
+    for case in engine.cases.values():
+        if any(a.joint for a in case.appointments) and any(
+            "joint_session" not in s.consents for s in case.subjects
+        ):
+            out.append(Violation("I11", case.id, "joint session booked without every consent"))
+    return out
+
+
+def i12_care_clock_never_restarts(engine: Engine) -> list[Violation]:
+    """The result-to-care clock is set once, when the case opens. Rejections, re-referrals and
+    no-shows never restart it, so a case cannot buy time by bouncing between units."""
+    out: list[Violation] = []
+    for case in engine.cases.values():
+        clocks = [e for e in case.expectations if e.kind == "care_clock"]
+        if len(clocks) > 1:
+            out.append(Violation("I12", case.id, f"care clock set {len(clocks)} times"))
+        if clocks and clocks[0].created_at > case.opened_at:
+            out.append(Violation("I12", case.id, "care clock started after the case opened"))
+    return out
+
+
+def i13_time_runs_forward(engine: Engine) -> list[Violation]:
+    """Nothing is recorded in the past: audit times never go backwards, so no event can be
+    backdated to hide a delay."""
+    out: list[Violation] = []
+    previous = ""
+    for event in engine.audit.events:
+        if previous and event.at < previous:
+            out.append(Violation("I13", event.case_id, f"event {event.seq} is backdated"))
+        previous = max(previous, event.at)
+    return out
+
+
+def i14_understood_before_referral(engine: Engine) -> list[Violation]:
+    """No case moves past acknowledgement until every person in it has confirmed they
+    understood the result and the next step (Statement 05's "understood")."""
+    out: list[Violation] = []
+    ack = _STAGE_ORDER.index(Stage.ACKNOWLEDGED)
+    for case in engine.cases.values():
+        reached = [stage for stage, _ in case.stage_history if stage != Stage.CLOSED]
+        moved_on = any(_STAGE_ORDER.index(stage) >= ack for stage in reached)
+        if moved_on and not all(s.acknowledged_at and s.understood for s in case.subjects):
+            out.append(Violation("I14", case.id, "moved on before everyone understood"))
+    return out
+
+
+def i15_evidence_ladder(engine: Engine) -> list[Violation]:
+    """Closure evidence is never AI-generated text, and a closure that counts as success rests
+    on evidence at tier T2 or stronger (see `evidence.py`)."""
+    out: list[Violation] = []
+    for case in engine.cases.values():
+        closure = case.closure
+        if closure is None:
+            continue
+        rule = engine.pathway_of(case).closures.get(closure.type)
+        if rule is None:
+            continue
+        evidence = {k: closure.evidence.get(k, "") for k in rule.evidence}
+        for problem in ladder_problems(evidence, closure.counts_as):
+            out.append(Violation("I15", case.id, problem))
     return out

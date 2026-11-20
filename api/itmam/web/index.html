@@ -92,7 +92,8 @@ footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
       <li>Pick <b>Omar</b>: he never opened his result. Press <b>+1 day</b> a few times and watch reminders, then escalation.</li>
       <li>Pick <b>Mariam</b>: press <b>Do the next correct step</b> to walk her to closure (skip ahead to reach the appointment).</li>
       <li>Press <b>Ask the agents</b>: six agents propose; only people act, and the engine checks every rule.</li>
-      <li>Under <b>Try a mistake</b>, watch the rules refuse unsafe actions, including the AI trying to close a case. Then open <b>AI governance</b> to see the AI log.</li>
+      <li>Under <b>Try a mistake</b>, watch the rules refuse unsafe actions, including the AI trying to close a case or an AI summary used as evidence. Then open <b>AI governance</b> to see the AI log.</li>
+      <li>Pick <b>Aisha &amp; Khalid</b>: one case, two people. Each must understand and consent alone; try booking a joint session before both consent.</li>
     </ol>
   </div>
   <div class="bar">
@@ -113,7 +114,7 @@ footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
   </div>
   <footer>
     All data is synthetic. Agents only propose; every change goes through the case engine and its
-    ten rules. Arabic text is a draft pending native review. Source and test results are in the repository.
+    fifteen rules. Malaffi links are simulated. Arabic text is a draft pending native review. Source and test results are in the repository.
   </footer>
 </div>
 <script>
@@ -182,7 +183,8 @@ function render() {
     ["Avg to notification", d(M.avg_days_to_notification)], ["Avg to referral accepted", d(M.avg_days_to_referral_accepted)],
     ["Avg to closure", d(M.avg_days_to_closure)]];
   $("metrics").innerHTML = `<div class="meta" style="margin-bottom:6px"><b>Closure and impact measures</b> · computed live from this demo's synthetic cases</div>
-    <div class="tiles">${tiles.map(([k, v]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("")}</div>`;
+    <div class="tiles">${tiles.map(([k, v]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("")}</div>
+    ${ledgerView(S.insights)}`;
   $("toast").innerHTML = S.message ? `<div class="toast ${S.ok ? "" : "bad"}">${esc(S.message)}</div>` : "";
   $("list").innerHTML = S.cases.map(c => `
     <div class="card case ${c.id === sel ? "sel" : ""}" onclick="pick('${c.id}')">
@@ -190,6 +192,7 @@ function render() {
       <div class="meta">${esc(c.stage)} · owner: ${esc(c.owner)}</div>
       <div class="steps">${STAGES.map((s, i) => `<i class="${i <= c.stage_index ? "done" : ""}"></i>`).join("")}</div>
       ${c.next_deadline ? `<div class="meta">Next deadline (${esc(c.next_deadline.what)}): ${esc(c.next_deadline.at)}</div>` : ""}
+      ${c.stuck ? `<div class="meta">Stuck point: <b>${esc(c.stuck.label)}</b> ${statusPill(c.stuck.status)}</div>` : ""}
     </div>`).join("");
   renderDetail();
 }
@@ -203,6 +206,18 @@ function badges(c) {
   return b;
 }
 function pick(cid) { sel = cid; render(); }
+function statusPill(s) {
+  const cls = {overdue: "bad", at_risk: "warn", on_track: "ok", paused: ""}[s] || "";
+  return `<span class="pill ${cls}">${esc(s.replace("_", " "))}</span>`;
+}
+function ledgerView(I) {
+  if (!I) return "";
+  const stuck = Object.entries(I.stuck_points), held = Object.entries(I.days_held);
+  return `<div class="meta" style="margin:10px 0 6px"><b>Loop-closure ledger</b> · where open cases are stuck, who must act today, and who held the cases</div>
+    <div class="tiles">${stuck.length ? stuck.map(([k, v]) => `<div class="tile"><b>${v}</b><span>${esc(k)}</span></div>`).join("") : `<div class="tile"><b>0</b><span>open cases</span></div>`}</div>
+    <div class="meta" style="margin-top:6px"><b>Act today</b> (deadline within 48 h): ${I.pre_breach.length ? I.pre_breach.map(x => `${esc(x.name)}: ${esc(x.label)} (${x.hours_left} h left)`).join(" · ") : "none"}</div>
+    <div class="meta"><b>Days held</b> (all cases): ${held.map(([k, v]) => `${esc(k)} ${v} d`).join(" · ")}</div>`;
+}
 
 function renderDetail() {
   const c = S && S.cases.find(x => x.id === sel);
@@ -210,7 +225,9 @@ function renderDetail() {
   const props = agentOut[c.id];
   $("detail").innerHTML = `
     <h2>${esc(c.name)} <span class="meta">· ${c.language === "ar" ? "Arabic" : "English"} · ${esc(c.insurance)}${c.female_endoscopist ? " · prefers a female endoscopist" : ""}</span></h2>
-    <div class="meta">${esc(c.note)}</div>
+    <div class="meta">${esc(c.pathway)}${c.people > 1 ? ` · ${c.people} people · joint-session consents ${c.consents} of ${c.people}` : ""} · ${esc(c.note)}</div>
+    ${c.stuck ? `<div class="msg"><b>Stuck point:</b> ${esc(c.stuck.label)} ${statusPill(c.stuck.status)} <span class="meta">· ${c.stuck.days_in_stage} d in this stage</span>
+      <div class="meta">Who acts: ${esc(c.stuck.who)} · Next action: ${esc(c.stuck.next_action)}</div></div>` : ""}
     <div class="row" style="margin-top:6px">${badges(c)}<span class="pill">owner: ${esc(c.owner)} (${esc(c.owner_role)})</span>
       ${c.barriers.map(b => `<span class="pill warn">barrier: ${esc(b.replace(/_/g, " "))}</span>`).join("")}</div>
     <div class="steps">${STAGES.map((s, i) => `<i class="${i <= c.stage_index ? "done" : ""}"></i>`).join("")}</div>
@@ -241,6 +258,8 @@ function renderDetail() {
       <button class="small" onclick="mistake('${c.id}','close_without_evidence')">Close without evidence</button>
       <button class="small" onclick="mistake('${c.id}','wrong_org_accepts')">Wrong unit accepts</button>
       <button class="small" onclick="mistake('${c.id}','coordinator_pauses_urgent')">Coordinator pauses urgent case</button>
+      <button class="small" onclick="mistake('${c.id}','ai_evidence')">AI summary as evidence</button>
+      <button class="small" onclick="mistake('${c.id}','joint_without_consent')">Joint session without both consents</button>
     </div>
     <h4>Timeline (hash-chained audit)</h4>
     <ul class="timeline">${c.timeline.slice().reverse().map(e => `<li><span class="t">${esc(e.at)}</span>

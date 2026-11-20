@@ -96,8 +96,30 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _template(case_stage: Stage, language: str) -> tuple[str, str]:
-    key, en, ar = TEMPLATES.get(case_stage, TEMPLATES[Stage.OUTCOME_RECORDED])
+# Pathway-neutral wording for the stages whose CRC text names a colonoscopy.
+GENERAL: dict[Stage, tuple[str, str, str]] = {
+    Stage.NOTIFIED: (
+        "open_result",
+        "Your screening result needs a follow-up appointment. Please open your link to confirm "
+        "you have read it and to choose a time to talk.",
+        "نتيجة فحصك تحتاج إلى موعد متابعة. يرجى فتح الرابط لتأكيد قراءتها واختيار وقت للحديث.",
+    ),
+    Stage.ACKNOWLEDGED: (
+        "referral",
+        "Thank you. We are sending your referral and will confirm the clinic.",
+        "شكراً لك. نقوم بإرسال تحويلك وسنؤكد لك العيادة.",
+    ),
+    Stage.BOOKED: (
+        "prep",
+        "Your appointment is booked. We will send a reminder two days before.",
+        "تم حجز موعدك. سنرسل لك تذكيراً قبل الموعد بيومين.",
+    ),
+}
+
+
+def _template(case_stage: Stage, language: str, general: bool = False) -> tuple[str, str]:
+    table = GENERAL if general and case_stage in GENERAL else TEMPLATES
+    key, en, ar = table.get(case_stage, TEMPLATES[Stage.OUTCOME_RECORDED])
     return key, ar if language == "ar" else en
 
 
@@ -117,7 +139,7 @@ def draft_message(box: Sandbox, case_id: str) -> Proposal:
     case = box.case(case_id)
     subject = case.subjects[0]
     profile = box.profiles.get(case_id)
-    key, template = _template(case.stage, subject.language)
+    key, template = _template(case.stage, subject.language, not case.pathway_id.startswith("crc"))
     checks = ["approved template", f"max {MAX_CHARS} characters", "no diagnosis words"]
     text, source, notes = template, "rules", []
     name = profile.name if profile else ""

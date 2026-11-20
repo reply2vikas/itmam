@@ -12,6 +12,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from itmam.agents.base import Proposal
+from itmam.domain.evidence import ladder_problems
 
 if TYPE_CHECKING:
     from itmam.sandbox import Sandbox
@@ -46,6 +47,10 @@ def verify_closure(
                 issues.append(f"missing evidence: {kind}")
             elif value.lower() in PLACEHOLDERS:
                 issues.append(f"{kind} is placeholder text ({value!r})")
+        checks.append("evidence ladder")
+        issues.extend(
+            ladder_problems({k: str(evidence.get(k, "")) for k in rule.evidence}, rule.counts_as)
+        )
         if rule.min_contact_attempts:
             checks.append("contact attempts")
             made = len(case.contact_attempts)

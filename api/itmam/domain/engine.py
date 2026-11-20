@@ -17,6 +17,8 @@ from itmam.domain.audit import AuditLog, case_fingerprint
 from itmam.domain.calendar import UAE_CALENDAR, Duration, WorkCalendar
 from itmam.domain.clock import Clock
 from itmam.domain.errors import CommandRejected, Rejection
+from itmam.domain.evidence import ladder_problems
+from itmam.domain.evidence import tiers as evidence_tiers
 from itmam.domain.model import (
     CLOCK_FOR_STAGE,
     Actor,
@@ -672,6 +674,9 @@ class Engine:
         missing = [kind for kind in rule.evidence if not str(evidence.get(kind, "")).strip()]
         if missing:
             raise CommandRejected("evidence_missing", f"missing evidence: {', '.join(missing)}")
+        weak = ladder_problems({k: evidence[k] for k in rule.evidence}, rule.counts_as)
+        if weak:
+            raise CommandRejected("evidence_too_weak", "; ".join(weak))
         if rule.min_contact_attempts and len(case.contact_attempts) < rule.min_contact_attempts:
             raise CommandRejected(
                 "contact_protocol_incomplete",
@@ -699,6 +704,7 @@ class Engine:
             "closure_proposed",
             type=closure_type,
             evidence=sorted(evidence),
+            tiers=evidence_tiers({k: evidence[k] for k in rule.evidence}),
             transfer_to=transfer_to,
         )
         self._arm(case, "closure_signoff", p.closure_signoff.breach.add_to(now, self.calendar))

@@ -25,6 +25,7 @@ from itmam.domain import Actor, CommandRejected, Stage
 from itmam.domain.calendar import UAE_TZ
 from itmam.domain.model import Case, ExpectationStatus
 from itmam.domain.pathway import load_pathways
+from itmam.insights import stuck_point
 from itmam.sandbox import DIRECTORY, SCREENING, Sandbox, new_sandbox
 
 PATHWAYS = load_pathways()
@@ -66,6 +67,7 @@ EVENT_TEXT = {
     "paused": "Paused",
     "resumed": "Resumed",
     "stage_changed": "Stage changed",
+    "consent_recorded": "Consent recorded by the person themselves",
 }
 
 
@@ -106,8 +108,13 @@ def case_view(box: Sandbox, c: Case) -> dict[str, Any]:
         for s in box.engine.suggestions.values()
         if s.case_id == c.id and s.status == "pending"
     ]
+    point = stuck_point(box.engine, c, box.clock.now())
     return {
         "id": c.id,
+        "pathway": PATHWAYS[c.pathway_id].name,
+        "people": len(c.subjects),
+        "stuck": point.as_dict() if point else None,
+        "consents": sum("joint_session" in s.consents for s in c.subjects),
         "name": profile.name if profile else c.id,
         "note": profile.note if profile else "",
         "insurance": profile.insurance if profile else "",
@@ -139,8 +146,14 @@ def _parse(at: str) -> Any:
 
 
 def _detail(details: dict[str, Any]) -> str:
-    keep = ("to_org", "reason", "level", "target", "outcome", "type", "codes", "channel")
-    parts = [f"{k.replace('_', ' ')}: {details[k]}" for k in keep if details.get(k)]
+    keep = ("to_org", "reason", "level", "target", "outcome", "type", "codes", "channel", "tiers")
+
+    def show(value: Any) -> str:
+        if isinstance(value, dict):
+            return ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in value.items())
+        return str(value)
+
+    parts = [f"{k.replace('_', ' ')}: {show(details[k])}" for k in keep if details.get(k)]
     return "; ".join(str(p) for p in parts)
 
 
@@ -203,7 +216,7 @@ def start_demo() -> dict[str, Any]:
         _sandboxes[sid] = box
         while len(_sandboxes) > MAX_SANDBOXES:
             _sandboxes.popitem(last=False)
-    return state(box, sid, "A fresh demo with four synthetic patients.")
+    return state(box, sid, "A fresh demo with five synthetic cases.")
 
 
 @app.get("/api/demo/{sid}")
@@ -299,6 +312,8 @@ MISTAKES = {
     "wrong_org_accepts": "A unit that was not sent the referral tries to accept it",
     "close_without_evidence": "Someone closes the case without evidence",
     "coordinator_pauses_urgent": "A coordinator pauses an urgent case",
+    "ai_evidence": "Someone uses an AI-written summary as closure evidence",
+    "joint_without_consent": "A joint session is booked before both partners consent",
 }
 
 
@@ -317,6 +332,21 @@ def mistake(sid: str, cid: str, kind: str) -> dict[str, Any]:
             e.accept_referral(staff.coordinator(other), cid)
         elif kind == "close_without_evidence":
             e.propose_closure(staff.coordinator(c.owner.org), cid, "not_actionable", {})
+        elif kind == "ai_evidence":
+            e.propose_closure(
+                staff.coordinator(c.owner.org),
+                cid,
+                "not_actionable",
+                {"clinical_review_note": "ai: model summary says no follow-up is needed"},
+            )
+        elif kind == "joint_without_consent":
+            if len(c.subjects) < 2:
+                return "Try this on Aisha & Khalid: only couple cases have joint sessions."
+            if all("joint_session" in x.consents for x in c.subjects):
+                return "Both partners have already consented, so a joint session is allowed."
+            e.book_appointment(
+                staff.coordinator(c.owner.org), cid, box.clock.now() + timedelta(days=3), True
+            )
         else:
             if c.urgency != "urgent":
                 return "Try this on Sara: only urgent cases need a clinician to pause them."
@@ -340,7 +370,8 @@ def governance(sid: str) -> dict[str, Any]:
             "ai_enabled": ai_enabled(),
             "model": model_name() or "none (rules only)",
             "controls": [
-                "Agents propose; only people act, through the case engine's ten rules",
+                "Agents propose; only people act, through the case engine's fifteen rules",
+                "AI-written text is never accepted as closure evidence (evidence ladder, I15)",
                 "AI actor refused for every command except suggestions",
                 "Guard screens patient text for prompt injection and personal data",
                 "No patient names or identifiers are sent to the model",
