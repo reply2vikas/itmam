@@ -198,6 +198,8 @@ make mutation-check  # plants 14 deliberate bugs and confirms the tests catch ev
 | --- | --- | --- |
 | 10,000 seeded journeys (`make proptest-10k`, seed 42) | Passed: 0 invariant violations (9 min 41 s, peak memory 3 GB) | 18 Oct 2026 |
 | 14 planted bugs (`make mutation-check`) | 14 of 14 caught, in each of three runs | 18 Oct 2026 |
+| 10,000 seeded journeys, all fifteen invariants (`make proptest-10k`, seed 42) | Passed: 0 invariant violations (4 min 52 s) | 20 Nov 2026 |
+| 14 planted bugs, after adding I11–I15 | 14 of 14 caught | 20 Nov 2026 |
 
 In the 10,000-journey run, 45% of journeys closed at least one case, 27% reached a recorded
 outcome, 20% escalated a case to L3 and 19% paused and resumed one; every closure type occurred.
