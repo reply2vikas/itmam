@@ -144,3 +144,13 @@ def test_simulation_runs_clean() -> None:
     with_itmam = run("itmam", params, cohort=40, days=60, seed=1)
     assert base.violations == 0 and with_itmam.violations == 0
     assert base.cohort == with_itmam.cohort == 40
+
+
+def test_barrier_codes_fit_the_case_pathway() -> None:
+    client = TestClient(app)
+    sid = client.post("/api/demo").json()["sid"]
+    for case_id in (COUPLE, MARIAM):
+        r = client.post(
+            f"/api/demo/{sid}/cases/{case_id}/reply", json={"text": "I don't have a car"}
+        ).json()
+        assert r["ok"] is True, r["message"]
