@@ -7,7 +7,7 @@ frameworks to show the reasoning; it does not claim certification against any of
 ## Principle: propose, never act
 
 Six agents read a case and **propose**. A person applies a proposal, and the case engine checks
-all ten rules (I1–I10, see the README) before anything changes. The engine refuses every command
+all fifteen rules (I1–I15, see the README) before anything changes. The engine refuses every command
 from the AI actor except suggestions, so an agent bug or a manipulated model cannot close,
 accept, pause or reassign a case. This is enforced in code (`engine.py`) and tested on 10,000
 random journeys, including the AI trying the wrong thing.
@@ -35,6 +35,7 @@ and classifies replies into a closed list of barrier codes.
 | Harmful or alarming wording | Drafts with diagnosis words, over 320 characters or missing the next step are rejected | `agents/navigator.py` | 4 benchmark cases |
 | Model output outside the allowed set | Barrier codes are filtered to the pathway's list | `agents/navigator.py` | Benchmark |
 | AI acting on its own | Engine refuses AI commands other than suggestions; suggestions need a coordinator | `domain/engine.py` | Invariant I3, property test, planted-bug check |
+| AI text used as proof that care happened | AI-written text is never closure evidence; success closures need tier T2+ evidence (evidence ladder) | `domain/evidence.py`, `domain/engine.py` | Invariant I15; `test_ai_text_is_never_evidence`; demo mistake button |
 | Decisions on thin information | Orchestrator reports an evidence score and names missing inputs | `agents/orchestrator.py` | 2 benchmark cases |
 | Model unavailable or misbehaving | Every agent falls back to rules; `ITMAM_AI=off` is a kill switch | `agents/base.py` | `test_kill_switch_turns_the_model_off` |
 | No record of what the AI did | Every proposal and review is logged; the audit log is hash-chained | `sandbox.py`, `domain/audit.py` | Invariant checks, audit verification |

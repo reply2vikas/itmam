@@ -34,6 +34,12 @@ Current as of submission, 20 November 2026.
   not that the clinical outcome was good.
 - "Understood" is recorded when the patient confirms the result and next step (the
   `acknowledged` stage). A teach-back check in the patient's language is planned for the pilot.
+- Malaffi-verified closure is simulated: the demo labels its stand-in references
+  "(simulated)". A real link needs Department of Health onboarding and approval.
+- The evidence ladder's tiers and the T2 minimum for success closures are prototype defaults,
+  to be agreed with clinicians.
+- The Itmam Twin simulation runs on assumed rates (`sim/parameters.yaml`); it shows what those
+  assumptions imply, not what Itmam will achieve.
 - No clinical validation has been done. Tests show the software follows its rules; only a pilot
   can show whether Itmam improves follow-up.
 - Random journeys test the rules; they do not prove them. The property-based test checks every

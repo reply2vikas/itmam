@@ -23,17 +23,22 @@ Working prototype, submitted on 20 November 2026.
 
 | Area | State |
 | --- | --- |
-| Case engine, three pathways, ten invariants, property-based and planted-bug tests | Done |
-| Web demo with per-visitor sandbox, four synthetic patients, demo clock, closure and impact measures | Done, live |
+| Case engine, three pathways, fifteen invariants, property-based and planted-bug tests | Done |
+| Evidence ladder (closure evidence tiers T0–T4; AI text never counts as evidence) | Done |
+| Loop-closure ledger: stuck point, who acts and next action for every open case; act-today list; days held by each side | Done, live |
+| Premarital couple case: one case, two people, separate understanding and consent | Done, live |
+| Malaffi-verified closure | Simulated: the demo uses a labelled stand-in for Malaffi; a real link needs DoH onboarding |
+| Itmam Twin: what-if simulation of a FIT-positive cohort through the real engine | Done ([results](docs/simulation.md)) |
+| Web demo with per-visitor sandbox, five synthetic cases, demo clock, closure and impact measures | Done, live |
 | Six propose-only agents, Guard, AI governance screen, 67-case benchmark | Done, live |
 | Installable web app (phone home screen) | Done |
-| Discrete-event simulation of 10,000 results; held-out evaluation of live AI replies | Planned for the pilot |
+| Held-out evaluation of live AI replies; simulation rates measured from real data | Planned for the pilot |
 | Persistent database, sign-in, real system integrations | Planned for the pilot |
 
 ## Try it
 
 Open the live demo at **https://itmam-85431195414.europe-west3.run.app** (synthetic data; AI assistance by Gemini 2.5 Flash-Lite, with a rules-only fallback), or run it on your own computer with `make run` and open `localhost:8080` in your browser (this address works only on the computer running it). Each
-visitor gets a private sandbox with four synthetic patients and a demo clock, and the page opens
+visitor gets a private sandbox with five synthetic cases and a demo clock, and the page opens
 with a two-minute tour:
 
 ![Itmam demo: case list, case timeline and closure measures](docs/demo.png)
@@ -44,16 +49,51 @@ with a two-minute tour:
 | Omar (English, Daman Basic) | Silence: automatic reminders, then escalation L1 → L2 → L3 |
 | Sara (Arabic, urgent, prefers a female endoscopist) | Urgency first; routing that respects her preference |
 | Rashid (English, Thiqa) | A missed appointment, barriers, and rebooking with support |
+| Aisha & Khalid (premarital couple, Arabic) | One case, two people: each must understand and consent alone before a joint counselling session |
 
 A **closure and impact measures** panel, computed live from the demo's cases, shows the measures Statement 05 asks for: notified, understood, referrals accepted, no-shows, overdue, escalated, closed with evidence, unresolved, and average days from result to notification, referral acceptance and closure.
 
-"Try a mistake" makes the AI, the wrong unit or the wrong person attempt an unsafe action; the
-engine refuses each one and the refusal changes nothing.
+A **loop-closure ledger** below it shows where every open case is stuck (not notified, not yet
+understood, referral not accepted, not booked, missed appointment, evidence missing), who must
+act and the next action; an **act today** list of cases whose deadline falls within 48 hours;
+and the **days held** by the patient, the screening clinic and the receiving unit. All of it is
+derived by rules from the case and its audit log ([`api/itmam/insights.py`](api/itmam/insights.py)).
+
+"Try a mistake" makes the AI, the wrong unit or the wrong person attempt an unsafe action,
+including using an AI-written summary as closure evidence and booking a couple's joint session
+before both partners consent. The engine refuses each one and the refusal changes nothing.
+
+### Evidence ladder and verified closure
+
+Closure evidence carries its source, and the source sets its strength
+([`api/itmam/domain/evidence.py`](api/itmam/domain/evidence.py)):
+
+| Tier | Source | Example |
+| --- | --- | --- |
+| T0 | Patient's own report | "I had it done abroad" |
+| T1 | Navigator or coordinator attestation | A note after a phone call |
+| T2 | Record entered by the clinical team; scheduling system | The default for unlabelled records |
+| T3 | Provider record; record confirmed through Malaffi | Procedure or counselling report |
+| T4 | Pathology or laboratory result | Histology |
+
+A closure that counts as success needs every piece of evidence at T2 or above, and AI-written
+text is never evidence at any tier (invariant I15). In the demo, closures use a **simulated**
+Malaffi lookup (`malaffi:ENC-SYN-… (simulated)`, T3) to show how verified closure would work;
+there is no real Malaffi connection.
+
+### Itmam Twin
+
+[`api/itmam/simulation.py`](api/itmam/simulation.py) runs a synthetic FIT-positive cohort through
+the real engine, with and without follow-up, using the same patients and seed (`make sim`).
+Rates without follow-up are set to land near the Abu Dhabi baseline of 30.5%; every other rate
+is an assumption in [`sim/parameters.yaml`](sim/parameters.yaml). Latest run: 31.5% → 47.0%
+completion, no rule broken, and where open cases stall ([docs/simulation.md](docs/simulation.md)).
+**It is a what-if under stated assumptions, not evidence**; only a pilot can measure the effect.
 
 ## Agents
 
 Six agents read a case and **propose**; none of them can change it. A person applies a proposal,
-and the case engine still checks all ten rules.
+and the case engine still checks all fifteen rules.
 
 | Agent | Job | Guardrails |
 | --- | --- | --- |
@@ -61,14 +101,14 @@ and the case engine still checks all ten rules.
 | Chaser | What should happen next on a late or stuck case, and who does it | Urgent cases always go to a clinician first |
 | Router | Which endoscopy unit to refer to | Insurance network, accepting referrals, no unit that already rejected, female-endoscopist preference, urgent slot within 7 days |
 | Navigator | Drafts the patient message; tags barriers in free-text replies (English and Arabic) | Approved templates; no names sent to the model; drafts checked for length and diagnosis words; tags are suggestions until a coordinator approves |
-| Verifier | Checks a closure before anyone signs | Placeholder evidence, due-date range, closure type that contradicts the outcome |
+| Verifier | Checks a closure before anyone signs | Placeholder evidence, evidence ladder tier, due-date range, closure type that contradicts the outcome |
 | Guard | AI security for everything sent to or from a model | Prompt-injection screen (English and Arabic); Emirates ID, phone and email redaction |
 
 **AI security and governance:** see [docs/ai-governance.md](docs/ai-governance.md). In the demo,
 the **AI governance** button shows the controls and the session's AI log. `ITMAM_AI=off` is a
 kill switch that runs every agent on rules only.
 
-**Testing:** 91 automated tests, a 67-case agent benchmark (24 safety-critical cases;
+**Testing:** 101 automated tests, a 67-case agent benchmark (24 safety-critical cases;
 [docs/agent-benchmark.md](docs/agent-benchmark.md)), 10,000 seeded random care journeys with no
 rule broken, and 14 of 14 planted bugs caught. With `GEMINI_API_KEY` set (and optionally
 `GEMINI_MODEL`), the Navigator uses Gemini and falls back to its rules on any failure or
@@ -91,7 +131,7 @@ make run            # the demo on your computer, at localhost:8080
 
 ```mermaid
 flowchart LR
-    R[Screening result] --> E[Case engine<br/>owner, clocks, ten rules]
+    R[Screening result] --> E[Case engine<br/>owner, clocks, fifteen rules]
     E -->|silence| X[Escalation<br/>L1 coordinator, L2 clinician, L3 manager]
     E -->|read-only case| A[Six agents<br/>propose only]
     A <-->|redacted, screened text| G[Guard] <--> M[Gemini, optional]
@@ -119,7 +159,7 @@ flowchart LR
 More detail: [`docs/engine.md`](docs/engine.md). Known limits:
 [`docs/assumptions-limitations.md`](docs/assumptions-limitations.md).
 
-## The ten invariants
+## The fifteen invariants
 
 Checked after every step of every randomly generated journey ([`api/itmam/domain/invariants.py`](api/itmam/domain/invariants.py)).
 
@@ -135,11 +175,16 @@ Checked after every step of every randomly generated journey ([`api/itmam/domain
 | I8 | Every actionable result maps to exactly one case: received = open + closed |
 | I9 | A closed case never changes |
 | I10 | Patients only ever receive clinically approved template versions |
+| I11 | A joint session (e.g. a premarital couple's counselling) is booked only when every person has given their own consent |
+| I12 | The result-to-care clock is set once and never restarts: rejections, re-referrals and no-shows cannot buy time |
+| I13 | Time runs forward: no event is recorded before the one logged ahead of it, so nothing can be backdated |
+| I14 | No case moves past acknowledgement until every person in it has confirmed they understood |
+| I15 | Closure evidence is never AI-written text, and success closures rest on evidence at tier T2 or stronger |
 
 The property-based test ([`api/tests/test_invariants_property.py`](api/tests/test_invariants_property.py))
 generates random care journeys across all three pathways — right and wrong people, the AI
 actor, known mistakes at every stage, clock jumps from a minute to four months — and checks all
-ten invariants after every step. It also asserts that every refused command changes nothing.
+fifteen invariants after every step. It also asserts that every refused command changes nothing.
 
 ```bash
 make proptest-10k    # one seeded batch of 10,000 journeys, about 10 minutes
@@ -166,7 +211,8 @@ api/        engine (itmam/domain), pathway files, JSON Schema, tests, FastAPI ap
 api/itmam/web/   the demo web app (served by the API)
 api/itmam/agents/  the six agents and their benchmark
 docs/       engine guide, AI governance, agent benchmark, assumptions and limitations
-web/ sim/ eval/  notes on work planned for the pilot (no code yet)
+sim/        Itmam Twin parameters (code in api/itmam/simulation.py)
+web/ eval/  notes on work planned for the pilot (no code yet)
 ```
 
 ## Licence
